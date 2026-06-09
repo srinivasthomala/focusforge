@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "FocusForge",
+  "version": "0.1.0",
+  "description": "Forge your focus. Shape your day. A lightweight focus and productivity tool for developers and creators.",
+  "permissions": [
+    "storage",
+    "tabs",
+    "alarms",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "action": {
+    "default_popup": "src/popup.html"
+  },
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "blocklist",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  }
+}

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FocusForge</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 320px;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      background: linear-gradient(135deg, #14b8a6, #06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 4px;
+    }
+
+    .tagline {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .status {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .status-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .status-label {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    .status-value {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .status-active {
+      color: #14b8a6;
+    }
+
+    .status-inactive {
+      color: #64748b;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+
+    .btn-primary {
+      background: #14b8a6;
+      color: #0f172a;
+    }
+
+    .btn-primary:hover {
+      background: #0d9488;
+    }
+
+    .btn-secondary {
+      background: #1e293b;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    .btn-secondary:hover {
+      background: #334155;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .blocklist {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #334155;
+    }
+
+    .blocklist-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #94a3b8;
+    }
+
+    .blocklist-item {
+      font-size: 12px;
+      padding: 6px 8px;
+      background: #1e293b;
+      border-radius: 4px;
+      margin-bottom: 4px;
+      color: #cbd5e1;
+    }
+
+    .timer {
+      font-size: 28px;
+      font-weight: bold;
+      text-align: center;
+      margin: 16px 0;
+      color: #14b8a6;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">FocusForge</div>
+    <div class="tagline">Forge your focus</div>
+  </div>
+
+  <div class="status">
+    <div class="status-row">
+      <span class="status-label">Session Status</span>
+      <span id="sessionStatus" class="status-value status-inactive">Inactive</span>
+    </div>
+    <div class="status-row">
+      <span class="status-label">Distractions Blocked</span>
+      <span id="distractionCount" class="status-value">0</span>
+    </div>
+  </div>
+
+  <div id="timerDisplay" class="timer" style="display: none;">25:00</div>
+
+  <button id="startBtn" class="btn btn-primary">Start 25-min Focus Session</button>
+  <button id="endBtn" class="btn btn-danger" style="display: none;">End Session</button>
+
+  <div class="blocklist">
+    <div class="blocklist-title">Blocked Sites</div>
+    <div id="blocklistContainer"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
+
+

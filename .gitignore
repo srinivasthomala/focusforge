@@ -1,0 +1,67 @@
+# Node.js / Next.js
+node_modules/
+.next/
+out/
+dist/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Next.js build output
+.next/
+build/
+tsconfig.tsbuildinfo
+
+# Environment variables
+.env
+.env*.local
+.env.production
+.env.development
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+
+# FastAPI
+*.db
+*.sqlite3
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Chrome Extension
+extension/dist/
+extension/build/
+extension/_metadata/
+*.pem
+*.crx
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Misc
+*.bak
+*.tmp
+.cache/
+
+
