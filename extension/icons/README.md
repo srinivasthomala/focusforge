@@ -1,23 +1,17 @@
 # Extension Icons
 
-This folder should contain the FocusForge extension icons in the following sizes:
+The PNG icons in this folder are **generated** — don't hand-edit them.
 
-- `icon16.png` - 16x16 pixels (used in extension toolbar)
-- `icon48.png` - 48x48 pixels (used in extension management page)
-- `icon128.png` - 128x128 pixels (used in Chrome Web Store)
+To regenerate (e.g. after a brand color change):
 
-## Temporary Icons
+```bash
+python scripts/generate_icons.py
+```
 
-For development, you can create simple colored squares as placeholders:
+Source: [`scripts/generate_icons.py`](../../scripts/generate_icons.py)
 
-1. Create PNG files with the specified dimensions
-2. Use a teal/mint color (#14b8a6) as the main color
-3. Optionally add "FF" text (for FocusForge) in white
+Requires Pillow (`pip install Pillow`). Outputs:
 
-## Design Suggestions
-
-The icon should represent:
-- Focus and concentration
-- A forge or hammer (metaphor for forging focus)
-- Simple, recognizable design at small sizes
-- Colors: Teal (#14b8a6) and dark blue/grey (#0f172a)
+- `icon16.png` — toolbar
+- `icon48.png` — extensions page
+- `icon128.png` — Chrome Web Store listing
