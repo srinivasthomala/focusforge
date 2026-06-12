@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { WeeklyChart } from '@/components/WeeklyChart';
-import Link from 'next/link';
+import { Nav } from '@/components/Nav';
+import { authedFetch } from '@/lib/api';
 
 interface DashboardData {
   todayFocusMinutes: number;
@@ -23,7 +24,7 @@ export default function Dashboard() {
   const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/dashboard')
+    authedFetch('/api/dashboard')
       .then((res) => res.json())
       .then((data) => {
         setData(data);
@@ -39,10 +40,10 @@ export default function Dashboard() {
     setGenerating(true);
     setAiError(null);
     try {
-      const res = await fetch('/api/summary', {
+      const res = await authedFetch('/api/summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: 'default-user', refresh }),
+        body: JSON.stringify({ refresh }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -60,23 +61,7 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <nav className="border-b border-border">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16 items-center">
-              <Link href="/" className="text-xl font-bold text-primary">
-                FocusForge
-              </Link>
-              <div className="flex space-x-4">
-                <Link href="/dashboard" className="text-foreground hover:text-primary transition-colors">
-                  Dashboard
-                </Link>
-                <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Settings
-                </Link>
-              </div>
-            </div>
-          </div>
-        </nav>
+        <Nav />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center text-muted-foreground">Loading...</div>
         </main>
@@ -86,23 +71,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <Link href="/" className="text-xl font-bold text-primary">
-              FocusForge
-            </Link>
-            <div className="flex space-x-4">
-              <Link href="/dashboard" className="text-foreground hover:text-primary transition-colors">
-                Dashboard
-              </Link>
-              <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">
-                Settings
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Nav />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold mb-8">Your Dashboard</h1>
