@@ -50,7 +50,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       
       // Log the distraction attempt
       logActivity({
-        userId: 'default-user',
         timestamp: new Date().toISOString(),
         url: changeInfo.url,
         domain: domain,
@@ -125,7 +124,6 @@ async function startFocusSession(duration = 25) {
   
   // Log session start
   logActivity({
-    userId: 'default-user',
     timestamp: new Date().toISOString(),
     url: 'session-start',
     domain: 'system',
@@ -172,23 +170,31 @@ async function sendLogsToBackend() {
     return;
   }
 
+  const apiKey = await getApiKey();
+  if (!apiKey) {
+    // Keep logs queued until the user connects an account via the options page.
+    console.warn('FocusForge: no API key set. Open the extension options to connect your account.');
+    return;
+  }
+
   const logsToSend = activityLogs;
   activityLogs = [];
   await saveState();
-  
+
   try {
     const response = await fetch(`${API_BASE_URL}/logs`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({ logs: logsToSend })
     });
-    
+
     if (response.ok) {
       console.log(`Sent ${logsToSend.length} logs to backend`);
     } else {
-      console.error('Failed to send logs:', response.statusText);
+      console.error('Failed to send logs:', response.status, response.statusText);
       activityLogs = [...logsToSend, ...activityLogs];
       await saveState();
     }
@@ -197,6 +203,13 @@ async function sendLogsToBackend() {
     activityLogs = [...logsToSend, ...activityLogs];
     await saveState();
   }
+}
+
+// Read the saved FocusForge API key (set via the options page).
+function getApiKey() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['apiKey'], (result) => resolve(result.apiKey || ''));
+  });
 }
 
 // Update declarativeNetRequest rules based on blocklist and session state

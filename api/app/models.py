@@ -3,7 +3,7 @@ from typing import List
 
 
 class LogEntry(BaseModel):
-    userId: str
+    userId: str = ""  # server-assigned from the caller's credential; ignored if sent
     timestamp: str
     url: str
     domain: str
