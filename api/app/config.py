@@ -13,6 +13,16 @@ class Settings(BaseSettings):
     # postgresql+psycopg2://user:pass@host:5432/dbname
     database_url: str = "postgresql+psycopg2://focusforge:focusforge@localhost:5432/focusforge"
 
+    # Optional — enables real AI summaries via Anthropic Claude. When unset, the
+    # API serves a deterministic fallback so the demo still works.
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-opus-4-8"
+
+    # Abuse guards for the public demo (only real Claude calls count against these).
+    ai_daily_generation_limit: int = 50  # hard ceiling per UTC day across all users
+    ai_rate_limit_per_ip: int = 5  # max generations per IP within the window
+    ai_rate_limit_window_seconds: int = 3600  # the per-IP window (1 hour)
+
     @property
     def sync_database_url(self) -> str:
         url = self.database_url

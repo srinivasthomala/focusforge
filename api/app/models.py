@@ -31,10 +31,14 @@ class DashboardResponse(BaseModel):
 
 
 class SummaryRequest(BaseModel):
-    logs: List[LogEntry]
+    userId: str = "default-user"
+    refresh: bool = False
 
 
 class SummaryResponse(BaseModel):
     summary: str
+    model: str
+    cached: bool
+    generatedAt: str
 
 

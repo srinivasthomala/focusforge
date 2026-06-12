@@ -17,6 +17,10 @@ interface DashboardData {
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [aiMeta, setAiMeta] = useState<{ model: string; cached: boolean } | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/dashboard')
@@ -30,6 +34,28 @@ export default function Dashboard() {
         setLoading(false);
       });
   }, []);
+
+  const handleGenerate = async (refresh: boolean) => {
+    setGenerating(true);
+    setAiError(null);
+    try {
+      const res = await fetch('/api/summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'default-user', refresh }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.detail || `Request failed (${res.status})`);
+      }
+      setAiSummary(json.summary);
+      setAiMeta({ model: json.model, cached: json.cached });
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'Failed to generate summary');
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -133,7 +159,29 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-sm text-foreground max-h-32 overflow-y-auto">
-                {data?.aiSummary || 'No summary available yet.'}
+                {aiSummary || data?.aiSummary || 'No summary available yet.'}
+              </div>
+              {aiError && (
+                <div className="mt-2 text-xs text-destructive">{aiError}</div>
+              )}
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  onClick={() => handleGenerate(aiSummary !== null)}
+                  disabled={generating}
+                  className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  {generating
+                    ? 'Generating…'
+                    : aiSummary
+                    ? 'Regenerate'
+                    : 'Generate AI Summary'}
+                </button>
+                {aiMeta && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {aiMeta.model}
+                    {aiMeta.cached ? ' · cached' : ''}
+                  </span>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -6,9 +6,9 @@ from sqlalchemy import select, cast, Date
 from sqlalchemy.orm import Session
 
 from app.models import DashboardResponse, WeekData
-from app.routers.summary import generate_fake_summary
+from app.ai_summary import deterministic_summary_from_logs
 from app.database import get_db
-from app.db_models import ActivityLog, activity_log_to_log_entry
+from app.db_models import ActivityLog, AISummary, activity_log_to_log_entry
 
 router = APIRouter()
 
@@ -57,8 +57,17 @@ def get_real_dashboard_data(db: Session) -> DashboardResponse:
         domain for domain, _ in Counter(distracted_domains).most_common(2)
     ]
 
-    # Generate summary using actual today's logs
-    ai_summary = generate_fake_summary(today_logs)
+    # Show the cached AI summary if one was generated today; otherwise fall back
+    # to the free deterministic summary. We never call Claude on dashboard load.
+    ai_summary = deterministic_summary_from_logs(today_logs)
+    cached_summary = db.scalars(
+        select(AISummary).where(
+            AISummary.user_id == "default-user",
+            AISummary.summary_date == today,
+        )
+    ).first()
+    if cached_summary is not None:
+        ai_summary = cached_summary.summary
 
     # Calculate weekly data (last 7 days)
     week_data = []

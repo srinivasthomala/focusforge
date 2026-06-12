@@ -1,8 +1,18 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from sqlalchemy import DateTime, Float, String, Text, Boolean, Integer, func
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -38,6 +48,38 @@ class ActivityLog(Base):
     is_distraction_attempt: Mapped[bool] = mapped_column(Boolean, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class AISummary(Base):
+    """Cached AI summary, one row per (user, day). Keeps repeat views free."""
+
+    __tablename__ = "ai_summaries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    summary_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    model: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "summary_date", name="uq_ai_summary_user_date"),
+    )
+
+
+class AIGenerationEvent(Base):
+    """One row per *real* Claude call. Powers the daily cap + per-IP rate limit."""
+
+    __tablename__ = "ai_generation_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    client_ip: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    user_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
 
 
