@@ -83,6 +83,28 @@ class AIGenerationEvent(Base):
     )
 
 
+class ApiKey(Base):
+    """A per-user FocusForge API key. The extension (and any device client)
+    authenticates with this instead of an interactive Supabase login. Only the
+    SHA-256 hash is stored; the raw key is shown to the user exactly once."""
+
+    __tablename__ = "api_keys"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    key_hash: Mapped[str] = mapped_column(
+        String(64), unique=True, index=True, nullable=False
+    )
+    prefix: Mapped[str] = mapped_column(String(16), nullable=False)  # for display
+    label: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
 def log_entry_to_orm(e: LogEntry) -> ActivityLog:
     return ActivityLog(
         user_id=e.userId,

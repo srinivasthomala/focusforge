@@ -31,7 +31,6 @@ class DashboardResponse(BaseModel):
 
 
 class SummaryRequest(BaseModel):
-    userId: str = "default-user"
     refresh: bool = False
 
 
@@ -40,5 +39,21 @@ class SummaryResponse(BaseModel):
     model: str
     cached: bool
     generatedAt: str
+
+
+class ApiKeyCreateRequest(BaseModel):
+    label: str = ""
+
+
+class ApiKeyInfo(BaseModel):
+    id: int
+    prefix: str
+    label: str
+    createdAt: str
+    lastUsedAt: str | None = None
+
+
+class ApiKeyCreateResponse(ApiKeyInfo):
+    key: str  # plaintext, returned exactly once at creation
 
 

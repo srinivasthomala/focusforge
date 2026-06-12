@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     ai_rate_limit_per_ip: int = 5  # max generations per IP within the window
     ai_rate_limit_window_seconds: int = 3600  # the per-IP window (1 hour)
 
+    # Supabase auth — the project's JWT secret (Settings -> API -> JWT Secret).
+    # Used to verify dashboard access tokens (HS256). The extension authenticates
+    # with FocusForge API keys instead, so it doesn't need this.
+    supabase_jwt_secret: str = ""
+
     @property
     def sync_database_url(self) -> str:
         url = self.database_url

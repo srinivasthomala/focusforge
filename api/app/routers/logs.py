@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
+from app.auth import get_current_user
 from app.models import LogBatch
 from app.database import get_db
 from app.db_models import ActivityLog, log_entry_to_orm
@@ -10,13 +11,21 @@ router = APIRouter()
 
 
 @router.post("/logs")
-async def receive_logs(batch: LogBatch, db: Session = Depends(get_db)):
+async def receive_logs(
+    batch: LogBatch,
+    user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """
-    Receive a batch of activity logs from the Chrome extension and persist them
-    to PostgreSQL.
+    Receive a batch of activity logs from a device client (e.g. the Chrome
+    extension) and persist them, scoped to the authenticated user.
     """
     try:
-        rows = [log_entry_to_orm(e) for e in batch.logs]
+        rows = []
+        for e in batch.logs:
+            row = log_entry_to_orm(e)
+            row.user_id = user_id  # never trust a client-supplied userId
+            rows.append(row)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid log timestamp: {e}")
 
@@ -35,7 +44,17 @@ async def receive_logs(batch: LogBatch, db: Session = Depends(get_db)):
 
 
 @router.get("/logs/count")
-async def get_log_count(db: Session = Depends(get_db)):
-    """Get the current count of stored log rows (for debugging)."""
-    n = db.scalar(select(func.count()).select_from(ActivityLog)) or 0
+async def get_log_count(
+    user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get the count of stored log rows for the authenticated user."""
+    n = (
+        db.scalar(
+            select(func.count())
+            .select_from(ActivityLog)
+            .where(ActivityLog.user_id == user_id)
+        )
+        or 0
+    )
     return {"count": int(n)}

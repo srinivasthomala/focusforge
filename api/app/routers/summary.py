@@ -5,6 +5,7 @@ from sqlalchemy import Date, cast, func, select
 from sqlalchemy.orm import Session
 
 from app.ai_summary import FALLBACK_MODEL, aggregate_stats, generate_summary
+from app.auth import get_current_user
 from app.config import get_settings
 from app.database import get_db
 from app.db_models import (
@@ -73,13 +74,13 @@ def _enforce_guards(db: Session, client_ip: str) -> None:
 async def generate_summary_endpoint(
     payload: SummaryRequest,
     request: Request,
+    user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SummaryResponse:
     """Generate (or return a cached) AI summary of the user's focus day.
 
     Triggered explicitly from the dashboard's "Generate" button — never on load.
     """
-    user_id = payload.userId or "default-user"
     today = datetime.now().date()
 
     cached = db.scalars(

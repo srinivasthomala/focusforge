@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select, cast, Date
 from sqlalchemy.orm import Session
 
+from app.auth import get_current_user
 from app.models import DashboardResponse, WeekData
 from app.ai_summary import deterministic_summary_from_logs
 from app.database import get_db
@@ -13,15 +14,16 @@ from app.db_models import ActivityLog, AISummary, activity_log_to_log_entry
 router = APIRouter()
 
 
-def get_real_dashboard_data(db: Session) -> DashboardResponse:
+def get_real_dashboard_data(db: Session, user_id: str) -> DashboardResponse:
     """
-    Calculate dashboard data from activity logs in PostgreSQL.
+    Calculate dashboard data from the authenticated user's activity logs.
     """
     today = datetime.now().date()
     week_start = today - timedelta(days=6)
 
-    # Limit to the 7-day window the chart and metrics need
+    # Limit to this user and the 7-day window the chart and metrics need
     stmt = select(ActivityLog).where(
+        ActivityLog.user_id == user_id,
         cast(ActivityLog.occurred_at, Date) >= week_start,
         cast(ActivityLog.occurred_at, Date) <= today,
     )
@@ -62,7 +64,7 @@ def get_real_dashboard_data(db: Session) -> DashboardResponse:
     ai_summary = deterministic_summary_from_logs(today_logs)
     cached_summary = db.scalars(
         select(AISummary).where(
-            AISummary.user_id == "default-user",
+            AISummary.user_id == user_id,
             AISummary.summary_date == today,
         )
     ).first()
@@ -105,9 +107,12 @@ def get_real_dashboard_data(db: Session) -> DashboardResponse:
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
-async def get_dashboard(db: Session = Depends(get_db)):
+async def get_dashboard(
+    user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """
-    Get dashboard data including today's metrics and weekly chart.
-    Uses data persisted from the extension.
+    Get dashboard data including today's metrics and weekly chart, scoped to the
+    authenticated user.
     """
-    return get_real_dashboard_data(db)
+    return get_real_dashboard_data(db, user_id)
