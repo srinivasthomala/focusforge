@@ -14,7 +14,7 @@
   <img alt="Claude" src="https://img.shields.io/badge/AI-Anthropic%20Claude-D97757" />
 </p>
 
-**🌐 Live demo:** _coming soon — see [Roadmap](#roadmap)_ &nbsp;·&nbsp; **🧩 Chrome extension:** _packaged release coming soon_ &nbsp;·&nbsp; **📚 API docs:** _coming soon_
+**🌐 Live demo:** [focusforge-iota.vercel.app](https://focusforge-iota.vercel.app) &nbsp;·&nbsp; **🧩 Chrome extension:** _packaged release coming soon_ &nbsp;·&nbsp; **📚 API docs:** [focusforge-api.fly.dev/docs](https://focusforge-api.fly.dev/docs)
 
 ---
 
@@ -55,7 +55,7 @@ flowchart LR
     subgraph "Web (Vercel)"
       WEB["Next.js 14 Dashboard<br/>(TS · Tailwind · Recharts)"]
     end
-    subgraph "API (Render / Fly)"
+    subgraph "API (Fly.io)"
       API["FastAPI<br/>(SQLAlchemy · Pydantic)"]
       AI["Anthropic Claude<br/>summarizer"]
     end
@@ -77,9 +77,9 @@ flowchart LR
 | **Frontend** | Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn-style components, Recharts |
 | **Backend** | FastAPI, Pydantic v2, SQLAlchemy 2.0, Uvicorn |
 | **Database** | PostgreSQL 16 (Docker locally, Neon in prod) |
-| **AI** | Anthropic Claude (Sonnet) for summary generation |
+| **AI** | Anthropic Claude (Opus) for summary generation |
 | **Extension** | Chrome Manifest v3, vanilla JS service worker, `declarativeNetRequest` |
-| **Deploy** | Vercel (web) · Render or Fly.io (api) · Neon (db) |
+| **Deploy** | Vercel (web) · Fly.io (api) · Neon (db) · Supabase (auth) |
 | **CI** | GitHub Actions — lint, typecheck, tests |
 
 ---
@@ -129,10 +129,10 @@ Visit http://localhost:3000 for the dashboard and http://localhost:8000/docs for
 - [x] Persistent activity logs in PostgreSQL
 - [x] Weekly focus chart + daily metrics
 - [x] MV3 extension with on-the-fly blocking
-- [ ] Real Anthropic Claude integration for the daily summary
-- [ ] Per-user authentication (Supabase / Clerk magic link)
+- [x] Real Anthropic Claude integration for the daily summary (deterministic fallback when no key)
+- [x] Per-user authentication (Supabase magic link + per-user API keys)
 - [ ] Settings page persisted to backend + synced to extension
-- [ ] Live demo deployed (Vercel + Render + Neon)
+- [x] Live demo deployed (Vercel + Fly.io + Neon)
 - [ ] Pytest + Vitest coverage with GitHub Actions CI badge
 - [ ] Packaged extension `.zip` published as a GitHub Release
 
