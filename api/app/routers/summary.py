@@ -126,19 +126,24 @@ async def generate_summary_endpoint(
             )
         )
 
-    if cached is not None:
-        cached.summary = summary_text
-        cached.model = model
-        cached.created_at = now
-    else:
-        cached = AISummary(
-            user_id=user_id,
-            summary_date=today,
-            summary=summary_text,
-            model=model,
-            created_at=now,
-        )
-        db.add(cached)
+    # Only persist genuine Claude summaries. Deterministic fallbacks are free to
+    # recompute and must always reflect live stats, so caching them would let the
+    # dashboard drift out of sync with the headline numbers.
+    if model != FALLBACK_MODEL:
+        if cached is not None:
+            cached.summary = summary_text
+            cached.model = model
+            cached.created_at = now
+        else:
+            db.add(
+                AISummary(
+                    user_id=user_id,
+                    summary_date=today,
+                    summary=summary_text,
+                    model=model,
+                    created_at=now,
+                )
+            )
 
     db.commit()
 

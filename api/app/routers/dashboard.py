@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.models import DashboardResponse, WeekData
-from app.ai_summary import deterministic_summary_from_logs
+from app.ai_summary import FALLBACK_MODEL, deterministic_summary_from_logs
 from app.database import get_db
 from app.db_models import ActivityLog, AISummary, activity_log_to_log_entry
 
@@ -61,6 +61,9 @@ def get_real_dashboard_data(db: Session, user_id: str) -> DashboardResponse:
 
     # Show the cached AI summary if one was generated today; otherwise fall back
     # to the free deterministic summary. We never call Claude on dashboard load.
+    # Live deterministic summary by default; surface a cached summary only if it
+    # came from a real Claude call (fallback rows are ignored so the summary
+    # always tracks the live headline stats).
     ai_summary = deterministic_summary_from_logs(today_logs)
     cached_summary = db.scalars(
         select(AISummary).where(
@@ -68,7 +71,7 @@ def get_real_dashboard_data(db: Session, user_id: str) -> DashboardResponse:
             AISummary.summary_date == today,
         )
     ).first()
-    if cached_summary is not None:
+    if cached_summary is not None and cached_summary.model != FALLBACK_MODEL:
         ai_summary = cached_summary.summary
 
     # Calculate weekly data (last 7 days)

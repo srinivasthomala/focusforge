@@ -23,7 +23,8 @@ SYSTEM_PROMPT = (
     "focus stats for a single day, write a short summary (2-3 sentences, plain "
     "text, no markdown or bullet points) that reflects the numbers back to them "
     "and offers one specific, actionable nudge. Reference the actual figures. "
-    "Be warm and motivating, never preachy."
+    "Be warm and motivating, never preachy. Do not use em-dashes or hyphens to "
+    "join clauses; use plain periods and short sentences."
 )
 
 
@@ -73,9 +74,9 @@ def build_deterministic_summary(stats: DailyStats) -> str:
             "along the way."
         )
     if stats.focus_sessions > 2:
-        parts.append("Great consistency — keep the streak alive tomorrow!")
+        parts.append("Great consistency. Keep the streak alive tomorrow!")
     elif stats.focus_sessions > 0:
-        parts.append("Nice start — try stacking one more session tomorrow.")
+        parts.append("Nice start. Try stacking one more session tomorrow.")
     else:
         parts.append("Kick off a focus session to build momentum.")
     return " ".join(parts)
