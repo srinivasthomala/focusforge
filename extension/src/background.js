@@ -11,11 +11,11 @@ let activityLogs = [];
 let distractionAttempts = 0;
 let stateLoaded = false;
 
-// API endpoint. Configurable via the options page (extensions can't read env
-// vars), so the same build can point at localhost or the deployed API.
-const DEFAULT_API_BASE_URL = 'http://localhost:8000';
+// Production API endpoint. End users only provide their API key; the URL is
+// fixed. For local development, set `apiBaseUrl` in chrome.storage to override.
+const DEFAULT_API_BASE_URL = 'https://focusforge-api.fly.dev';
 
-// Read the saved API base URL (set via the options page), falling back to local dev.
+// Resolve the API base URL — the production default unless a dev override is set.
 function getApiBaseUrl() {
   return new Promise((resolve) => {
     chrome.storage.local.get(['apiBaseUrl'], (result) => {
