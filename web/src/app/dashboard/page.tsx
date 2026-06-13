@@ -15,6 +15,27 @@ interface DashboardData {
   week: { date: string; minutes: number }[];
 }
 
+// Headline focus time: minutes under an hour, "1h 5m" once it crosses 60.
+function formatFocusTime(totalMinutes: number) {
+  const m = Math.floor(totalMinutes);
+  const unit = (label: string) => (
+    <span className="text-lg text-muted-foreground ml-1">{label}</span>
+  );
+
+  if (m < 60) {
+    return <>{m}{unit('min')}</>;
+  }
+
+  const hours = Math.floor(m / 60);
+  const mins = m % 60;
+  return (
+    <>
+      {hours}{unit('h')}
+      {mins > 0 && <>{' '}{mins}{unit('m')}</>}
+    </>
+  );
+}
+
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,16 +45,39 @@ export default function Dashboard() {
   const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
-    authedFetch('/api/dashboard')
-      .then((res) => res.json())
-      .then((data) => {
-        setData(data);
-        setLoading(false);
-      })
-      .catch((err) => {
+    let cancelled = false;
+
+    const loadDashboard = async () => {
+      try {
+        const res = await authedFetch('/api/dashboard');
+        const json = await res.json();
+        if (!cancelled) setData(json);
+      } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
-        setLoading(false);
-      });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadDashboard();
+
+    // Keep the dashboard current without a manual reload: refetch when the
+    // window regains focus or the tab becomes visible (e.g. after ending a
+    // session in the extension), plus a light poll to catch logs that land a
+    // moment after (the extension flushes them fire-and-forget).
+    const refresh = () => {
+      if (document.visibilityState === 'visible') loadDashboard();
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    const interval = setInterval(refresh, 30000);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+      clearInterval(interval);
+    };
   }, []);
 
   const handleGenerate = async (refresh: boolean) => {
@@ -86,8 +130,7 @@ export default function Dashboard() {
             <CardContent>
               <div className="space-y-2">
                 <div className="text-4xl font-bold text-primary">
-                  {data?.todayFocusMinutes || 0}
-                  <span className="text-lg text-muted-foreground ml-1">min</span>
+                  {formatFocusTime(data?.todayFocusMinutes || 0)}
                 </div>
                 <div className="text-sm text-muted-foreground">
                   {data?.todaySessions || 0} sessions completed
