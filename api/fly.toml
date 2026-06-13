@@ -1,0 +1,35 @@
+# Fly.io config for the FocusForge API.
+# Deploy from this directory with:  fly deploy
+# First time:  fly launch --no-deploy  (or `fly apps create focusforge-api`)
+#
+# Secrets (DATABASE_URL, ANTHROPIC_API_KEY, SUPABASE_JWT_SECRET,
+# CORS_ALLOWED_ORIGINS) are set with `fly secrets set KEY=value`, not here.
+
+app = "focusforge-api"
+primary_region = "iad"  # change to the region nearest you / your users
+
+[build]
+
+[env]
+  PORT = "8000"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  # Scale to zero when idle: cheap (~cents/mo), ~1-3s cold start on first hit.
+  # Set min_machines_running = 1 for an always-warm machine (~$3/mo).
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    method = "get"
+    path = "/health"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpus = 1

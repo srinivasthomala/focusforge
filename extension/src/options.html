@@ -53,9 +53,14 @@
   <div class="container">
     <h1><span class="brand">FocusForge</span> — Connect your account</h1>
     <p>
-      Paste a FocusForge API key so the extension can sync your activity to your
-      dashboard. Generate one under <strong>Settings → API Keys</strong> in the web app.
+      Point the extension at your FocusForge API and paste an API key so it can sync
+      your activity to your dashboard. Leave the URL blank to use local dev
+      (<code>http://localhost:8000</code>). Generate a key under
+      <strong>Settings → API Keys</strong> in the web app.
     </p>
+
+    <label for="apiBaseUrl">API base URL</label>
+    <input id="apiBaseUrl" type="text" placeholder="http://localhost:8000" autocomplete="off" spellcheck="false" />
 
     <label for="apiKey">API key</label>
     <input id="apiKey" type="text" placeholder="ff_..." autocomplete="off" spellcheck="false" />

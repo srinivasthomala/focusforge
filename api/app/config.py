@@ -28,6 +28,15 @@ class Settings(BaseSettings):
     # with FocusForge API keys instead, so it doesn't need this.
     supabase_jwt_secret: str = ""
 
+    # Comma-separated list of origins allowed by CORS. Defaults to the local web
+    # dev server; in prod set this to the deployed web origin(s), e.g.
+    # CORS_ALLOWED_ORIGINS=https://focusforge.vercel.app
+    cors_allowed_origins: str = "http://localhost:3000"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [o.strip() for o in self.cors_allowed_origins.split(",") if o.strip()]
+
     @property
     def sync_database_url(self) -> str:
         url = self.database_url

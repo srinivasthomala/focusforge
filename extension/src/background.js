@@ -10,8 +10,19 @@ let activityLogs = [];
 let distractionAttempts = 0;
 let stateLoaded = false;
 
-// API endpoint
-const API_BASE_URL = 'http://localhost:8000';
+// API endpoint. Configurable via the options page (extensions can't read env
+// vars), so the same build can point at localhost or the deployed API.
+const DEFAULT_API_BASE_URL = 'http://localhost:8000';
+
+// Read the saved API base URL (set via the options page), falling back to local dev.
+function getApiBaseUrl() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['apiBaseUrl'], (result) => {
+      const url = (result.apiBaseUrl || '').trim().replace(/\/+$/, '');
+      resolve(url || DEFAULT_API_BASE_URL);
+    });
+  });
+}
 
 // Initialize extension
 chrome.runtime.onInstalled.addListener(() => {
@@ -177,12 +188,14 @@ async function sendLogsToBackend() {
     return;
   }
 
+  const apiBaseUrl = await getApiBaseUrl();
+
   const logsToSend = activityLogs;
   activityLogs = [];
   await saveState();
 
   try {
-    const response = await fetch(`${API_BASE_URL}/logs`, {
+    const response = await fetch(`${apiBaseUrl}/logs`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
