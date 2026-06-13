@@ -56,18 +56,49 @@ def _user_from_api_key(token: str, db: Session) -> str | None:
     return row.user_id
 
 
+_jwks_client: jwt.PyJWKClient | None = None
+
+
+def _get_jwks_client() -> jwt.PyJWKClient | None:
+    """Lazily build (and cache) a JWKS client for the Supabase project. Returns
+    None when SUPABASE_URL is unset. PyJWKClient caches fetched keys internally."""
+    global _jwks_client
+    if _jwks_client is None:
+        url = get_settings().supabase_jwks_url
+        if not url:
+            return None
+        _jwks_client = jwt.PyJWKClient(url)
+    return _jwks_client
+
+
 def _user_from_jwt(token: str) -> str | None:
-    secret = get_settings().supabase_jwt_secret
-    if not secret:
-        return None
+    settings = get_settings()
     try:
-        payload = jwt.decode(
-            token,
-            secret,
-            algorithms=["HS256"],
-            audience=_SUPABASE_AUDIENCE,
-        )
+        alg = jwt.get_unverified_header(token).get("alg")
     except jwt.PyJWTError:
+        return None
+
+    try:
+        if alg in ("ES256", "RS256"):
+            # Modern Supabase: verify against the project's published public key.
+            client = _get_jwks_client()
+            if client is None:
+                return None
+            key = client.get_signing_key_from_jwt(token).key
+            payload = jwt.decode(
+                token, key, algorithms=[alg], audience=_SUPABASE_AUDIENCE
+            )
+        elif alg == "HS256":
+            # Legacy Supabase: shared-secret verification.
+            secret = settings.supabase_jwt_secret
+            if not secret:
+                return None
+            payload = jwt.decode(
+                token, secret, algorithms=["HS256"], audience=_SUPABASE_AUDIENCE
+            )
+        else:
+            return None
+    except (jwt.PyJWTError, jwt.PyJWKClientError):
         return None
     return payload.get("sub")
 

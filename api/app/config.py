@@ -23,10 +23,21 @@ class Settings(BaseSettings):
     ai_rate_limit_per_ip: int = 5  # max generations per IP within the window
     ai_rate_limit_window_seconds: int = 3600  # the per-IP window (1 hour)
 
-    # Supabase auth — the project's JWT secret (Settings -> API -> JWT Secret).
-    # Used to verify dashboard access tokens (HS256). The extension authenticates
-    # with FocusForge API keys instead, so it doesn't need this.
+    # Supabase auth. The dashboard authenticates with a Supabase access token;
+    # the extension uses FocusForge API keys instead, so it needs none of this.
+    #
+    # Modern Supabase projects sign tokens with asymmetric keys (ES256/RS256),
+    # verified via the project's JWKS endpoint — set SUPABASE_URL for that.
+    # SUPABASE_JWT_SECRET is the legacy HS256 shared secret, kept as a fallback
+    # for projects (or rotations) still signing with it.
+    supabase_url: str = ""
     supabase_jwt_secret: str = ""
+
+    @property
+    def supabase_jwks_url(self) -> str:
+        if not self.supabase_url:
+            return ""
+        return self.supabase_url.rstrip("/") + "/auth/v1/.well-known/jwks.json"
 
     # Comma-separated list of origins allowed by CORS. Defaults to the local web
     # dev server; in prod set this to the deployed web origin(s), e.g.
