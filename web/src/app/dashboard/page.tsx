@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { WeeklyChart } from '@/components/WeeklyChart';
 import { Nav } from '@/components/Nav';
@@ -43,6 +44,7 @@ export default function Dashboard() {
   const [aiMeta, setAiMeta] = useState<{ model: string; cached: boolean } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [hasApiKeys, setHasApiKeys] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,14 +61,32 @@ export default function Dashboard() {
       }
     };
 
+    // Whether the user has connected the extension yet (drives the onboarding
+    // banner). Refetched on focus so the banner clears once they add a key.
+    const loadKeys = async () => {
+      try {
+        const res = await authedFetch('/api/api-keys');
+        if (res.ok) {
+          const keys = await res.json();
+          if (!cancelled) setHasApiKeys(Array.isArray(keys) && keys.length > 0);
+        }
+      } catch {
+        /* ignore — banner just won't show */
+      }
+    };
+
     loadDashboard();
+    loadKeys();
 
     // Keep the dashboard current without a manual reload: refetch when the
     // window regains focus or the tab becomes visible (e.g. after ending a
     // session in the extension), plus a light poll to catch logs that land a
     // moment after (the extension flushes them fire-and-forget).
     const refresh = () => {
-      if (document.visibilityState === 'visible') loadDashboard();
+      if (document.visibilityState === 'visible') {
+        loadDashboard();
+        loadKeys();
+      }
     };
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
@@ -119,6 +139,23 @@ export default function Dashboard() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold mb-8">Your Dashboard</h1>
+
+        {/* Onboarding: shown until the user connects the browser extension. */}
+        {hasApiKeys === false && (
+          <div className="mb-8 rounded-lg border border-primary/30 bg-primary/5 p-4">
+            <div className="font-medium">Connect the browser extension to start tracking</div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Your dashboard stays empty until the FocusForge extension is linked to your
+              account. Generate an API key and paste it into the extension&apos;s options.
+            </p>
+            <Link
+              href="/settings"
+              className="inline-block mt-2 text-sm font-medium text-primary hover:underline"
+            >
+              Generate an API key in Settings →
+            </Link>
+          </div>
+        )}
 
         {/* Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
