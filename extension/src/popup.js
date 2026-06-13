@@ -65,21 +65,23 @@ function startTimer(endTime) {
   if (timerInterval) {
     clearInterval(timerInterval);
   }
-  
-  timerInterval = setInterval(() => {
-    const now = Date.now();
-    const remaining = Math.max(0, endTime - now);
-    
+
+  const render = () => {
+    const remaining = Math.max(0, endTime - Date.now());
+
     const minutes = Math.floor(remaining / 60000);
     const seconds = Math.floor((remaining % 60000) / 1000);
-    
+
     timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    
+
     if (remaining === 0) {
       clearInterval(timerInterval);
       init(); // Refresh UI
     }
-  }, 1000);
+  };
+
+  render(); // paint immediately so reopening mid-session shows real time, not the static 25:00
+  timerInterval = setInterval(render, 1000);
 }
 
 // Start focus session

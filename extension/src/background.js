@@ -5,6 +5,7 @@ const DEFAULT_BLOCKLIST = ['youtube.com', 'twitter.com', 'reddit.com'];
 
 let focusSessionActive = false;
 let sessionEndTime = null;
+let sessionStartTime = null;
 let blocklist = [...DEFAULT_BLOCKLIST];
 let activityLogs = [];
 let distractionAttempts = 0;
@@ -80,7 +81,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'sendLogs') {
     sendLogsToBackend();
   } else if (alarm.name === 'endSession') {
-    endFocusSession();
+    endFocusSession().then(() => sendLogsToBackend());
   }
 });
 
@@ -104,6 +105,9 @@ async function handleMessage(request, sendResponse) {
     } else if (request.action === 'endSession') {
       await endFocusSession();
       sendResponse({ success: true, focusSessionActive: false });
+      // Flush logs after responding so the popup updates instantly; failures
+      // are re-queued and retried by the periodic 'sendLogs' alarm.
+      sendLogsToBackend();
     } else if (request.action === 'getStatus') {
       sendResponse({
         focusSessionActive,
@@ -125,20 +129,22 @@ async function handleMessage(request, sendResponse) {
 // Start a focus session
 async function startFocusSession(duration = 25) {
   focusSessionActive = true;
-  sessionEndTime = Date.now() + (duration * 60 * 1000);
-  
+  sessionStartTime = Date.now();
+  sessionEndTime = sessionStartTime + (duration * 60 * 1000);
+
   // Set alarm to end session
   chrome.alarms.create('endSession', { when: sessionEndTime });
-  
+
   // Update blocking rules
   updateBlockingRules();
-  
-  // Log session start
+
+  // Log session start as a marker (no minutes — actual focus time is recorded
+  // when the session ends, so it reflects real elapsed time, not the plan).
   logActivity({
     timestamp: new Date().toISOString(),
     url: 'session-start',
     domain: 'system',
-    minutesActive: duration,
+    minutesActive: 0,
     isFocusSession: true,
     isDistractionAttempt: false
   });
@@ -150,9 +156,24 @@ async function startFocusSession(duration = 25) {
 
 // End focus session
 async function endFocusSession() {
+  // Record the actual focused time (now − start), so a session ended early
+  // counts only what was spent, not the planned duration. Guarded so repeat
+  // calls (e.g. expiry + manual end) don't double-log.
+  if (sessionStartTime) {
+    logActivity({
+      timestamp: new Date().toISOString(),
+      url: 'session-end',
+      domain: 'system',
+      minutesActive: Math.max(0, (Date.now() - sessionStartTime) / 60000),
+      isFocusSession: true,
+      isDistractionAttempt: false
+    });
+    sessionStartTime = null;
+  }
+
   focusSessionActive = false;
   sessionEndTime = null;
-  
+
   // Clear the alarm if it exists
   chrome.alarms.clear('endSession');
   
@@ -160,10 +181,9 @@ async function endFocusSession() {
   updateBlockingRules();
 
   await saveState();
-  
-  // Send logs immediately
-  await sendLogsToBackend();
-  
+
+  // Note: log flushing is intentionally NOT awaited here. Callers trigger the
+  // network send after responding to the popup, so the UI never waits on it.
   console.log('Focus session ended');
 }
 
@@ -243,10 +263,11 @@ function ensureStateLoaded() {
 function loadState() {
   return new Promise((resolve) => {
     chrome.storage.local.get(
-      ['blocklist', 'focusSessionActive', 'sessionEndTime', 'distractionAttempts', 'activityLogs'],
+      ['blocklist', 'focusSessionActive', 'sessionEndTime', 'sessionStartTime', 'distractionAttempts', 'activityLogs'],
       (result) => {
         blocklist = normalizeBlocklist(result.blocklist || DEFAULT_BLOCKLIST);
         sessionEndTime = Number.isFinite(result.sessionEndTime) ? result.sessionEndTime : null;
+        sessionStartTime = Number.isFinite(result.sessionStartTime) ? result.sessionStartTime : null;
         focusSessionActive = Boolean(result.focusSessionActive && sessionEndTime && sessionEndTime > Date.now());
         distractionAttempts = Number.isFinite(result.distractionAttempts) ? result.distractionAttempts : 0;
         activityLogs = Array.isArray(result.activityLogs) ? result.activityLogs : [];
@@ -254,6 +275,7 @@ function loadState() {
 
         if (!focusSessionActive) {
           sessionEndTime = null;
+          sessionStartTime = null;
           chrome.alarms.clear('endSession');
         }
 
@@ -269,6 +291,7 @@ function saveState() {
       blocklist,
       focusSessionActive,
       sessionEndTime,
+      sessionStartTime,
       distractionAttempts,
       activityLogs,
     }, resolve);
