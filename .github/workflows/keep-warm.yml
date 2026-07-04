@@ -21,6 +21,6 @@ jobs:
         run: curl -fsS -m 30 https://focusforge-api.fly.dev/health
 
       - name: Ping Supabase auth — keeps the free project from pausing
-        run: |
-          curl -fsS -m 30 https://egqjlomtqsynwadwwlnd.supabase.co/auth/v1/health
-          curl -fsS -m 30 https://egqjlomtqsynwadwwlnd.supabase.co/auth/v1/.well-known/jwks.json > /dev/null
+        # JWKS is public (no apikey needed) and routes through the project's API
+        # gateway, which registers activity. /auth/v1/health needs an apikey (401).
+        run: curl -fsS -m 30 https://egqjlomtqsynwadwwlnd.supabase.co/auth/v1/.well-known/jwks.json > /dev/null
