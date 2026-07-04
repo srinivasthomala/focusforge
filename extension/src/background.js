@@ -7,9 +7,14 @@ let focusSessionActive = false;
 let sessionEndTime = null;
 let sessionStartTime = null;
 let blocklist = [...DEFAULT_BLOCKLIST];
+let blockingMode = 'focus-only'; // 'focus-only' | 'always' — synced from the dashboard
+let lastSettingsSync = 0;
 let activityLogs = [];
 let distractionAttempts = 0;
 let stateLoaded = false;
+
+// How stale settings may get before an opportunistic (on-navigation) refresh.
+const SETTINGS_STALE_MS = 30000;
 
 // Production API endpoint. End users only provide their API key; the URL is
 // fixed. For local development, set `apiBaseUrl` in chrome.storage to override.
@@ -29,14 +34,22 @@ function getApiBaseUrl() {
 chrome.runtime.onInstalled.addListener(() => {
   console.log('FocusForge installed');
 
-  loadState().then(updateBlockingRules);
+  loadState().then(() => {
+    updateBlockingRules();
+    fetchSettings();
+  });
 
-  // Set up periodic log sending (every 5 minutes)
+  // Periodic log sending (every 5 min) + settings sync (every 1 min — Chrome's floor).
   chrome.alarms.create('sendLogs', { periodInMinutes: 5 });
+  chrome.alarms.create('syncSettings', { periodInMinutes: 1 });
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  loadState().then(updateBlockingRules);
+  loadState().then(() => {
+    updateBlockingRules();
+    fetchSettings();
+  });
+  chrome.alarms.create('syncSettings', { periodInMinutes: 1 });
 });
 
 // Listen for tab updates to detect blocked site access
@@ -46,12 +59,17 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 
   ensureStateLoaded().then(() => {
-    if (!focusSessionActive) {
-      return;
+    // Keep the blocklist/mode fresh as the user browses (throttled, non-blocking).
+    maybeRefreshSettings();
+
+    // End an expired session before deciding whether to block.
+    if (focusSessionActive && sessionEndTime && sessionEndTime <= Date.now()) {
+      endFocusSession();
     }
 
-    if (sessionEndTime && sessionEndTime <= Date.now()) {
-      endFocusSession();
+    // Block during a focus session, or always when "block always" is on.
+    const blockingActive = focusSessionActive || blockingMode === 'always';
+    if (!blockingActive) {
       return;
     }
 
@@ -59,17 +77,17 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
     if (isBlockedDomain(domain)) {
       distractionAttempts++;
-      
+
       // Log the distraction attempt
       logActivity({
         timestamp: new Date().toISOString(),
         url: changeInfo.url,
         domain: domain,
         minutesActive: 0,
-        isFocusSession: true,
+        isFocusSession: focusSessionActive,
         isDistractionAttempt: true
       });
-      
+
       // Redirect to blocked page
       chrome.tabs.update(tabId, { url: chrome.runtime.getURL('src/blocked.html') });
     }
@@ -80,6 +98,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'sendLogs') {
     sendLogsToBackend();
+  } else if (alarm.name === 'syncSettings') {
+    fetchSettings();
   } else if (alarm.name === 'endSession') {
     endFocusSession().then(() => sendLogsToBackend());
   }
@@ -113,8 +133,11 @@ async function handleMessage(request, sendResponse) {
         focusSessionActive,
         sessionEndTime,
         distractionAttempts,
-        blocklist
+        blocklist,
+        blockingMode
       });
+      // Opportunistically refresh settings when the popup opens (non-blocking).
+      fetchSettings();
     } else if (request.action === 'updateBlocklist') {
       blocklist = normalizeBlocklist(request.blocklist);
       await saveState();
@@ -245,6 +268,46 @@ function getApiKey() {
   });
 }
 
+// Pull the user's blocklist + blocking mode from the backend (the dashboard is
+// the source of truth). No-ops without an API key.
+async function fetchSettings() {
+  const apiKey = await getApiKey();
+  if (!apiKey) {
+    return;
+  }
+
+  const apiBaseUrl = await getApiBaseUrl();
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/settings`, {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+    });
+    if (!response.ok) {
+      return;
+    }
+    const data = await response.json();
+    if (Array.isArray(data.blocklist)) {
+      blocklist = normalizeBlocklist(data.blocklist);
+    }
+    if (data.blockingMode === 'always' || data.blockingMode === 'focus-only') {
+      blockingMode = data.blockingMode;
+    }
+    lastSettingsSync = Date.now();
+    await saveState();
+    updateBlockingRules();
+  } catch (error) {
+    console.error('Error fetching settings:', error);
+  }
+}
+
+// Refresh settings if they're older than the throttle window. Non-blocking, so
+// it never delays navigation; the fresh values apply to subsequent page loads.
+function maybeRefreshSettings() {
+  if (Date.now() - lastSettingsSync > SETTINGS_STALE_MS) {
+    fetchSettings();
+  }
+}
+
 // Update declarativeNetRequest rules based on blocklist and session state
 function updateBlockingRules() {
   // For simplicity in v1, we'll use tab redirection instead of declarativeNetRequest
@@ -263,9 +326,11 @@ function ensureStateLoaded() {
 function loadState() {
   return new Promise((resolve) => {
     chrome.storage.local.get(
-      ['blocklist', 'focusSessionActive', 'sessionEndTime', 'sessionStartTime', 'distractionAttempts', 'activityLogs'],
+      ['blocklist', 'blockingMode', 'lastSettingsSync', 'focusSessionActive', 'sessionEndTime', 'sessionStartTime', 'distractionAttempts', 'activityLogs'],
       (result) => {
         blocklist = normalizeBlocklist(result.blocklist || DEFAULT_BLOCKLIST);
+        blockingMode = result.blockingMode === 'always' ? 'always' : 'focus-only';
+        lastSettingsSync = Number.isFinite(result.lastSettingsSync) ? result.lastSettingsSync : 0;
         sessionEndTime = Number.isFinite(result.sessionEndTime) ? result.sessionEndTime : null;
         sessionStartTime = Number.isFinite(result.sessionStartTime) ? result.sessionStartTime : null;
         focusSessionActive = Boolean(result.focusSessionActive && sessionEndTime && sessionEndTime > Date.now());
@@ -289,6 +354,8 @@ function saveState() {
   return new Promise((resolve) => {
     chrome.storage.local.set({
       blocklist,
+      blockingMode,
+      lastSettingsSync,
       focusSessionActive,
       sessionEndTime,
       sessionStartTime,
