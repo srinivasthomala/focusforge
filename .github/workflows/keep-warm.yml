@@ -1,0 +1,26 @@
+name: Keep services warm
+
+# Free-tier services sleep when idle: the Supabase project pauses after ~7 days
+# of inactivity (which needs a *manual* restore), and the Fly machine scales to
+# zero. This pings them daily so the live demo never goes dark between visits.
+# A failed run doubles as an uptime alert — GitHub notifies you.
+#
+# Note: GitHub disables scheduled workflows after ~60 days with no repo activity,
+# and cron timing is best-effort — daily leaves plenty of margin either way.
+
+on:
+  schedule:
+    - cron: '23 7 * * *' # daily ~07:23 UTC (off-peak minute; cron is best-effort)
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping FocusForge API (Fly) — wakes it and exercises the DB path
+        run: curl -fsS -m 30 https://focusforge-api.fly.dev/health
+
+      - name: Ping Supabase auth — keeps the free project from pausing
+        run: |
+          curl -fsS -m 30 https://egqjlomtqsynwadwwlnd.supabase.co/auth/v1/health
+          curl -fsS -m 30 https://egqjlomtqsynwadwwlnd.supabase.co/auth/v1/.well-known/jwks.json > /dev/null
