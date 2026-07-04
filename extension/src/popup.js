@@ -49,10 +49,13 @@ function updateUI(status) {
   }
   
   distractionCount.textContent = status.distractionAttempts || 0;
-  
-  // Display blocklist
-  if (status.blocklist && status.blocklist.length > 0) {
-    blocklistContainer.innerHTML = status.blocklist
+  renderBlocklist(status.blocklist);
+}
+
+// Render the blocklist section from a list of domains.
+function renderBlocklist(list) {
+  if (list && list.length > 0) {
+    blocklistContainer.innerHTML = list
       .map(domain => `<div class="blocklist-item">${domain}</div>`)
       .join('');
   } else {
@@ -105,6 +108,19 @@ endBtn.addEventListener('click', async () => {
       updateUI(status);
     }
   });
+});
+
+// Live-update when the background syncs new settings from the dashboard, so the
+// popup reflects changes without being reopened. Reads storage directly (no
+// getStatus round-trip) to avoid re-triggering a settings fetch.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if (changes.blocklist) {
+    renderBlocklist(changes.blocklist.newValue || []);
+  }
+  if (changes.distractionAttempts) {
+    distractionCount.textContent = changes.distractionAttempts.newValue || 0;
+  }
 });
 
 // Initialize on load
