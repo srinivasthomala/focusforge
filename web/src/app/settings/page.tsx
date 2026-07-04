@@ -15,10 +15,13 @@ interface ApiKeyInfo {
   lastUsedAt: string | null;
 }
 
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
 export default function Settings() {
   const [blocklist, setBlocklist] = useState<string[]>(['youtube.com', 'twitter.com', 'reddit.com']);
   const [newDomain, setNewDomain] = useState('');
   const [blockingMode, setBlockingMode] = useState<BlockingMode>('focus-only');
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
 
   // API keys
   const [keys, setKeys] = useState<ApiKeyInfo[]>([]);
@@ -37,8 +40,41 @@ export default function Settings() {
     }
   };
 
+  const loadSettings = async () => {
+    try {
+      const res = await authedFetch('/api/settings');
+      if (res.ok) {
+        const json = await res.json();
+        setBlocklist(json.blocklist);
+        setBlockingMode(json.blockingMode);
+      }
+    } catch {
+      /* keep defaults if the fetch fails */
+    }
+  };
+
+  // Persist blocklist + mode; adopt the server's normalized values on success.
+  const persistSettings = async (nextBlocklist: string[], nextMode: BlockingMode) => {
+    setSaveStatus('saving');
+    try {
+      const res = await authedFetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blocklist: nextBlocklist, blockingMode: nextMode }),
+      });
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      setBlocklist(json.blocklist);
+      setBlockingMode(json.blockingMode);
+      setSaveStatus('saved');
+    } catch {
+      setSaveStatus('error');
+    }
+  };
+
   useEffect(() => {
     loadKeys();
+    loadSettings();
   }, []);
 
   const createKey = async () => {
@@ -76,14 +112,24 @@ export default function Settings() {
   };
 
   const handleAddDomain = () => {
-    if (newDomain && !blocklist.includes(newDomain)) {
-      setBlocklist([...blocklist, newDomain]);
+    const domain = newDomain.trim();
+    if (domain && !blocklist.includes(domain)) {
+      const next = [...blocklist, domain];
+      setBlocklist(next);
       setNewDomain('');
+      persistSettings(next, blockingMode);
     }
   };
 
   const handleRemoveDomain = (domain: string) => {
-    setBlocklist(blocklist.filter((d) => d !== domain));
+    const next = blocklist.filter((d) => d !== domain);
+    setBlocklist(next);
+    persistSettings(next, blockingMode);
+  };
+
+  const handleModeChange = (mode: BlockingMode) => {
+    setBlockingMode(mode);
+    persistSettings(blocklist, mode);
   };
 
   return (
@@ -91,7 +137,12 @@ export default function Settings() {
       <Nav />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold mb-8">Settings</h1>
+        <div className="flex items-center gap-3 mb-8">
+          <h1 className="text-3xl font-bold">Settings</h1>
+          {saveStatus === 'saving' && <span className="text-xs text-muted-foreground">Saving…</span>}
+          {saveStatus === 'saved' && <span className="text-xs text-primary">Saved</span>}
+          {saveStatus === 'error' && <span className="text-xs text-destructive">Couldn’t save</span>}
+        </div>
 
         <div className="space-y-6">
           {/* API Keys */}
@@ -180,7 +231,7 @@ export default function Settings() {
           <Card>
             <CardHeader>
               <CardTitle>Blocking Mode</CardTitle>
-              <CardDescription>Choose when to block distracting websites</CardDescription>
+              <CardDescription>Choose when to block distracting websites · syncs to your extension</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -190,7 +241,7 @@ export default function Settings() {
                     name="blockingMode"
                     value="focus-only"
                     checked={blockingMode === 'focus-only'}
-                    onChange={(e) => setBlockingMode(e.target.value as BlockingMode)}
+                    onChange={(e) => handleModeChange(e.target.value as BlockingMode)}
                     className="w-4 h-4 text-primary"
                   />
                   <div>
@@ -206,7 +257,7 @@ export default function Settings() {
                     name="blockingMode"
                     value="always"
                     checked={blockingMode === 'always'}
-                    onChange={(e) => setBlockingMode(e.target.value as BlockingMode)}
+                    onChange={(e) => handleModeChange(e.target.value as BlockingMode)}
                     className="w-4 h-4 text-primary"
                   />
                   <div>
@@ -224,7 +275,7 @@ export default function Settings() {
           <Card>
             <CardHeader>
               <CardTitle>Blocklist</CardTitle>
-              <CardDescription>Manage which websites to block</CardDescription>
+              <CardDescription>Manage which websites to block · syncs to your extension</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
