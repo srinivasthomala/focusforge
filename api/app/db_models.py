@@ -105,6 +105,25 @@ class ApiKey(Base):
     )
 
 
+class UserSettings(Base):
+    """Per-user preferences that sync between the web dashboard and the
+    extension: the site blocklist and when blocking applies. One row per user."""
+
+    __tablename__ = "user_settings"
+
+    user_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    blocklist: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON array
+    blocking_mode: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="focus-only"
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
 def log_entry_to_orm(e: LogEntry) -> ActivityLog:
     return ActivityLog(
         user_id=e.userId,

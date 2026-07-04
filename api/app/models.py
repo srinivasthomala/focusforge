@@ -1,5 +1,12 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Literal
+
+
+# Default blocklist for users who haven't customized theirs (mirrors the
+# extension's built-in default so both agree before the first sync).
+DEFAULT_BLOCKLIST = ["youtube.com", "twitter.com", "reddit.com"]
+
+BlockingMode = Literal["focus-only", "always"]
 
 
 class LogEntry(BaseModel):
@@ -55,5 +62,10 @@ class ApiKeyInfo(BaseModel):
 
 class ApiKeyCreateResponse(ApiKeyInfo):
     key: str  # plaintext, returned exactly once at creation
+
+
+class SettingsData(BaseModel):
+    blocklist: List[str]
+    blockingMode: BlockingMode
 
 
