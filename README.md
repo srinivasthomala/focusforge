@@ -4,6 +4,7 @@
 > Block distracting sites with a Chrome extension, track focus sessions, and get Claude-generated insights into your productivity patterns — all in one dashboard.
 
 <p align="left">
+  <a href="https://github.com/srinivasthomala/focusforge/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/srinivasthomala/focusforge/actions/workflows/ci.yml/badge.svg" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue.svg" />
   <img alt="Next.js" src="https://img.shields.io/badge/Next.js-14-black?logo=next.js" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white" />
