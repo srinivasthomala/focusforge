@@ -1,0 +1,35 @@
+name: Release extension
+
+# Push a version tag (e.g. `git tag v0.1.0 && git push origin v0.1.0`) to package
+# the Chrome extension and publish it as a GitHub Release asset.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Package extension
+        # Zip the extension contents (manifest.json at the zip root, as Chrome
+        # requires), excluding dev notes and Chrome's generated ruleset cache.
+        run: |
+          cd extension
+          zip -r "../focusforge-extension-${GITHUB_REF_NAME}.zip" . \
+            -x '_metadata/*' 'EXTENSION_NOTES.md' 'icons/README.md' '*/.DS_Store'
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            "focusforge-extension-${GITHUB_REF_NAME}.zip" \
+            --title "FocusForge ${GITHUB_REF_NAME}" \
+            --generate-notes

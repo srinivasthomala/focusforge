@@ -15,7 +15,7 @@
   <img alt="Claude" src="https://img.shields.io/badge/AI-Anthropic%20Claude-D97757" />
 </p>
 
-**🌐 Live demo:** [focusforge-iota.vercel.app](https://focusforge-iota.vercel.app) &nbsp;·&nbsp; **🧩 Chrome extension:** _packaged release coming soon_ &nbsp;·&nbsp; **📚 API docs:** [focusforge-api.fly.dev/docs](https://focusforge-api.fly.dev/docs)
+**🌐 Live demo:** [focusforge-iota.vercel.app](https://focusforge-iota.vercel.app) &nbsp;·&nbsp; **🧩 Chrome extension:** [download the latest release](https://github.com/srinivasthomala/focusforge/releases/latest) &nbsp;·&nbsp; **📚 API docs:** [focusforge-api.fly.dev/docs](https://focusforge-api.fly.dev/docs)
 
 ---
 
