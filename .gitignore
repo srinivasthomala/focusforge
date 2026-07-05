@@ -65,3 +65,6 @@ Thumbs.db
 .cache/
 
 
+
+# Oversized local demo GIF (use the Upwork video / a compressed <5MB gif instead)
+docs/screenshots/block_gif.gif
