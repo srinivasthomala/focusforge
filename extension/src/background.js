@@ -308,10 +308,10 @@ function maybeRefreshSettings() {
   }
 }
 
-// Update declarativeNetRequest rules based on blocklist and session state
+// Hook invoked whenever session/blocklist state changes. Blocking itself is
+// handled in the tabs.onUpdated listener, which redirects navigations to a
+// blocked domain over to blocked.html.
 function updateBlockingRules() {
-  // For simplicity in v1, we'll use tab redirection instead of declarativeNetRequest
-  // The blocking is handled in the tabs.onUpdated listener
   console.log('Blocking rules updated. Session active:', focusSessionActive);
 }
 

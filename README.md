@@ -79,7 +79,7 @@ flowchart LR
 | **Backend** | FastAPI, Pydantic v2, SQLAlchemy 2.0, Uvicorn |
 | **Database** | PostgreSQL 16 (Docker locally, Neon in prod) |
 | **AI** | Anthropic Claude (Opus) for summary generation |
-| **Extension** | Chrome Manifest v3, vanilla JS service worker, `declarativeNetRequest` |
+| **Extension** | Chrome Manifest v3, vanilla JS service worker, tab-based navigation blocking |
 | **Deploy** | Vercel (web) · Fly.io (api) · Neon (db) · Supabase (auth) |
 | **CI** | GitHub Actions — lint, typecheck, tests |
 
