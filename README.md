@@ -33,8 +33,6 @@
   <img src="docs/screenshots/settings.png" alt="Settings page" width="32%" />
 </p>
 
-> 🚧 Screenshots are placeholders until they're captured — see [`docs/screenshots/README.md`](docs/screenshots/README.md) for the shot list.
-
 ---
 
 ## What it does
