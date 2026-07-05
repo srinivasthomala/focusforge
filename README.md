@@ -9,7 +9,7 @@
   <img alt="Next.js" src="https://img.shields.io/badge/Next.js-14-black?logo=next.js" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" />
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white" />
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white" />
   <img alt="Postgres" src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" />
   <img alt="Chrome MV3" src="https://img.shields.io/badge/Chrome-MV3-4285F4?logo=googlechrome&logoColor=white" />
   <img alt="Claude" src="https://img.shields.io/badge/AI-Anthropic%20Claude-D97757" />
@@ -42,7 +42,7 @@
 - 🧱 **Block distractions on demand.** A Chrome (Manifest v3) extension intercepts navigation to user-defined domains while a focus session is active.
 - 📊 **Track focus time.** Activity logs are streamed from the extension to a FastAPI backend, persisted in Postgres, and aggregated into daily / weekly metrics.
 - 🤖 **AI-powered insights.** Anthropic Claude generates a personalized daily summary of your focus patterns, top distractions, and momentum trends.
-- ⚙️ **Per-user settings.** Manage your blocklist, blocking mode, and session defaults from a Next.js dashboard.
+- ⚙️ **Per-user settings.** Manage your blocklist and blocking mode from a Next.js dashboard; changes sync automatically to the extension.
 
 ---
 
@@ -131,11 +131,13 @@ Visit http://localhost:3000 for the dashboard and http://localhost:8000/docs for
 - [x] Weekly focus chart + daily metrics
 - [x] MV3 extension with on-the-fly blocking
 - [x] Real Anthropic Claude integration for the daily summary (deterministic fallback when no key)
-- [x] Per-user authentication (Supabase magic link + per-user API keys)
-- [ ] Settings page persisted to backend + synced to extension
-- [x] Live demo deployed (Vercel + Fly.io + Neon)
-- [ ] Pytest + Vitest coverage with GitHub Actions CI badge
-- [ ] Packaged extension `.zip` published as a GitHub Release
+- [x] Per-user auth (Supabase email/password + Google OAuth, plus per-user API keys)
+- [x] Settings persisted to the backend + synced to the extension
+- [x] Live demo deployed (Vercel + Fly.io + Neon + Supabase)
+- [x] Pytest suite + GitHub Actions CI (with badge)
+- [x] Packaged extension `.zip` published as a GitHub Release
+- [ ] Web test coverage (Vitest/Playwright)
+- [ ] Custom domain + branded auth screen
 
 ---
 
