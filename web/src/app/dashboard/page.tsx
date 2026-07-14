@@ -14,6 +14,15 @@ interface DashboardData {
   topDistractions: string[];
   aiSummary: string;
   week: { date: string; minutes: number }[];
+  asOf: string;
+  isToday: boolean;
+}
+
+// "Jul 11" from an ISO date, for the "most recent active day" label.
+function formatDayLabel(iso: string) {
+  if (!iso) return '';
+  const d = new Date(`${iso}T00:00:00`);
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 // Headline focus time: minutes under an hour, "1h 5m" once it crosses 60.
@@ -159,10 +168,12 @@ export default function Dashboard() {
 
         {/* Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Today's Focus */}
+          {/* Focus — today, or the most recent active day */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Today&apos;s Focus</CardTitle>
+              <CardTitle className="text-lg">
+                {data?.isToday === false ? 'Latest Focus' : "Today's Focus"}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -171,6 +182,7 @@ export default function Dashboard() {
                 </div>
                 <div className="text-sm text-muted-foreground">
                   {data?.todaySessions || 0} sessions completed
+                  {data && !data.isToday && ` · as of ${formatDayLabel(data.asOf)}`}
                 </div>
               </div>
             </CardContent>
@@ -186,7 +198,9 @@ export default function Dashboard() {
                 <div className="text-4xl font-bold text-destructive">
                   {data?.distractionAttempts || 0}
                 </div>
-                <div className="text-sm text-muted-foreground">attempts today</div>
+                <div className="text-sm text-muted-foreground">
+                  {data?.isToday === false ? 'attempts that day' : 'attempts today'}
+                </div>
                 {data?.topDistractions && data.topDistractions.length > 0 && (
                   <div className="pt-2 space-y-1">
                     <div className="text-xs text-muted-foreground">Top sites:</div>
@@ -240,7 +254,11 @@ export default function Dashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Weekly Focus</CardTitle>
-            <CardDescription>Your focus minutes over the last 7 days</CardDescription>
+            <CardDescription>
+              {data?.isToday === false
+                ? 'Your most recent 7 days of focus'
+                : 'Your focus minutes over the last 7 days'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <WeeklyChart data={data?.week || []} />
