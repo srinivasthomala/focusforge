@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select, cast, Date
 from sqlalchemy.orm import Session
 
+from app.activity import resolve_dashboard_date
 from app.auth import get_current_user
 from app.models import DashboardResponse, LogEntry, WeekData
 from app.ai_summary import FALLBACK_MODEL, deterministic_summary_from_logs
@@ -30,10 +31,14 @@ def filter_today(logs: list[LogEntry], today: date) -> list[LogEntry]:
 
 
 def build_dashboard(
-    stored_logs: list[LogEntry], today: date, ai_summary: str
+    stored_logs: list[LogEntry],
+    today: date,
+    ai_summary: str,
+    is_today: bool = True,
 ) -> DashboardResponse:
-    """Pure aggregation of a week's logs into the dashboard payload. Kept free of
-    DB access so it can be unit-tested directly (see tests/test_dashboard.py)."""
+    """Pure aggregation of a week's logs into the dashboard payload. ``today`` is
+    the reference day the metrics center on (see resolve_dashboard_date). Kept
+    free of DB access so it can be unit-tested (see tests/test_dashboard.py)."""
     today_logs = filter_today(stored_logs, today)
 
     today_focus_minutes = sum(
@@ -67,36 +72,39 @@ def build_dashboard(
         topDistractions=top_distractions,
         aiSummary=ai_summary,
         week=week_data,
+        asOf=today.isoformat(),
+        isToday=is_today,
     )
 
 
 def get_real_dashboard_data(db: Session, user_id: str) -> DashboardResponse:
-    """Fetch the user's last-7-days logs and aggregate them for the dashboard."""
-    today = datetime.now().date()
-    week_start = today - timedelta(days=6)
+    """Aggregate the 7-day window ending on the user's reference day (today, or
+    their most recent active day if today is empty) for the dashboard."""
+    reference, is_today = resolve_dashboard_date(db, user_id)
+    week_start = reference - timedelta(days=6)
 
     # Limit to this user and the 7-day window the chart and metrics need.
     stmt = select(ActivityLog).where(
         ActivityLog.user_id == user_id,
         cast(ActivityLog.occurred_at, Date) >= week_start,
-        cast(ActivityLog.occurred_at, Date) <= today,
+        cast(ActivityLog.occurred_at, Date) <= reference,
     )
     stored_logs = [activity_log_to_log_entry(r) for r in db.scalars(stmt).all()]
 
     # Live deterministic summary by default; surface a cached summary only if it
     # came from a real Claude call (fallback rows are ignored so the summary
     # always tracks the live headline stats). We never call Claude on load.
-    ai_summary = deterministic_summary_from_logs(filter_today(stored_logs, today))
+    ai_summary = deterministic_summary_from_logs(filter_today(stored_logs, reference))
     cached_summary = db.scalars(
         select(AISummary).where(
             AISummary.user_id == user_id,
-            AISummary.summary_date == today,
+            AISummary.summary_date == reference,
         )
     ).first()
     if cached_summary is not None and cached_summary.model != FALLBACK_MODEL:
         ai_summary = cached_summary.summary
 
-    return build_dashboard(stored_logs, today, ai_summary)
+    return build_dashboard(stored_logs, reference, ai_summary, is_today)
 
 
 @router.get("/dashboard", response_model=DashboardResponse)

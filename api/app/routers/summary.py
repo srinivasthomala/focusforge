@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import Date, cast, func, select
 from sqlalchemy.orm import Session
 
+from app.activity import resolve_dashboard_date
 from app.ai_summary import FALLBACK_MODEL, aggregate_stats, generate_summary
 from app.auth import get_current_user
 from app.config import get_settings
@@ -81,7 +82,9 @@ async def generate_summary_endpoint(
 
     Triggered explicitly from the dashboard's "Generate" button — never on load.
     """
-    today = datetime.now().date()
+    # Summarize the same day the dashboard shows (today, or the most recent
+    # active day) so the button and the headline stats stay in sync.
+    today, _ = resolve_dashboard_date(db, user_id)
 
     cached = db.scalars(
         select(AISummary).where(

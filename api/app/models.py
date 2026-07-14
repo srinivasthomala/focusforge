@@ -35,6 +35,11 @@ class DashboardResponse(BaseModel):
     topDistractions: List[str]
     aiSummary: str
     week: List[WeekData]
+    # The day the metrics reflect (ISO date) and whether that's the actual today.
+    # When a user has no activity today, the dashboard centers on their most
+    # recent active day instead of going blank.
+    asOf: str = ""
+    isToday: bool = True
 
 
 class SummaryRequest(BaseModel):

@@ -70,3 +70,16 @@ def test_other_days_excluded_from_today_but_counted_in_week():
 def test_filter_today_ignores_unparseable_timestamps():
     logs = [log("not-a-date"), log("2026-07-04T10:00:00Z")]
     assert len(filter_today(logs, TODAY)) == 1
+
+
+def test_reference_day_metadata_and_past_anchor():
+    # When the reference day is a past active day (not today), metrics center on
+    # that day and the payload reports it via asOf/isToday.
+    logs = [
+        log("2026-07-01T10:00:00Z", url="session-start", minutes=0),
+        log("2026-07-01T10:30:00Z", url="session-end", minutes=30.0),
+    ]
+    d = build_dashboard(logs, date(2026, 7, 1), "s", is_today=False)
+    assert d.asOf == "2026-07-01"
+    assert d.isToday is False
+    assert d.todayFocusMinutes == 30  # centered on the reference day, not "today"
