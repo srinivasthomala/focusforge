@@ -127,6 +127,13 @@ npm run build
 
 GitHub Actions (`.github/workflows/ci.yml`) runs both jobs on every push and pull request to `main`.
 
+`.github/workflows/deploy-api.yml` then deploys the API to Fly.io whenever a push to `main` touches `api/`, gated on the test suite passing. It needs a `FLY_API_TOKEN` repository secret:
+
+```bash
+fly tokens create deploy -a focusforge-api
+# paste the output into GitHub → Settings → Secrets and variables → Actions
+```
+
 ## Seeding demo data
 
 `scripts/seed_demo_data.py` posts a realistic backdated week of activity through the same `/logs` endpoint the extension uses:
@@ -143,7 +150,7 @@ Omit `--base-url` to target the production API.
 | Component | Host | Notes |
 | --- | --- | --- |
 | Web | **Vercel** | Root directory `web`, framework preset Next.js. Env: Supabase URL + publishable key, `API_URL` = the Fly URL |
-| API | **Fly.io** | `api/Dockerfile` + `api/fly.toml` (scale-to-zero, `/health` check). Deploy with `fly deploy --remote-only` from `api/` |
+| API | **Fly.io** | `api/Dockerfile` + `api/fly.toml` (scale-to-zero, `/health` check). Deploys automatically when `api/` changes on `main`, after tests pass. Manual fallback: `fly deploy --remote-only` from `api/` |
 | Database | **Neon** | PostgreSQL. Set as `DATABASE_URL` via `fly secrets set` |
 | Auth | **Supabase** | Add the production `/auth/callback` URL to the redirect URLs |
 

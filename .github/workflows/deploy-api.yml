@@ -1,0 +1,67 @@
+name: Deploy API
+
+# Deploys the FastAPI backend to Fly.io on pushes to main that touch `api/`,
+# but only after the test suite passes. Requires the `FLY_API_TOKEN` repo
+# secret (create one with: fly tokens create deploy -a focusforge-api).
+#
+# The web app deploys itself via Vercel's GitHub integration, so this workflow
+# covers the API only.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - '.github/workflows/deploy-api.yml'
+  workflow_dispatch:  # allow a manual deploy from the Actions tab
+
+# Never let two deploys race; a newer push waits for the one in flight.
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Tests (gate)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: api/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: pytest
+
+  deploy:
+    name: Deploy to Fly.io
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy
+        run: flyctl deploy --remote-only --config fly.toml
+        working-directory: api
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Smoke check
+        # The machine scales to zero, so the first request may cold start.
+        run: |
+          for i in 1 2 3 4 5; do
+            if curl -fsS -m 30 https://focusforge-api.fly.dev/health; then
+              echo "API healthy"
+              exit 0
+            fi
+            echo "Attempt $i failed; retrying in 10s"
+            sleep 10
+          done
+          echo "API did not return healthy after deploy"
+          exit 1
