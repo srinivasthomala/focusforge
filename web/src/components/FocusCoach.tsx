@@ -152,20 +152,7 @@ export function FocusCoach() {
           </p>
         ) : (
           <>
-            {turns.length === 0 ? (
-              <div className="flex flex-wrap gap-2 mb-4">
-                {SUGGESTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => send(s)}
-                    disabled={sending || outOfQuestions}
-                    className="text-xs px-3 py-1.5 rounded-full border border-border hover:bg-muted disabled:opacity-50 transition-colors"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            ) : (
+            {turns.length > 0 && (
               <div className="space-y-3 mb-4 max-h-80 overflow-y-auto pr-1" aria-live="polite">
                 {turns.map((turn, i) => (
                   <div key={i} className={turn.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
@@ -221,6 +208,20 @@ export function FocusCoach() {
                 <div ref={bottomRef} />
               </div>
             )}
+
+            {/* Quick prompts stay available for the whole conversation. */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {SUGGESTIONS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => send(s)}
+                  disabled={sending || outOfQuestions}
+                  className="text-xs px-3 py-1.5 rounded-full border border-border hover:bg-muted disabled:opacity-50 transition-colors"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
 
             <form onSubmit={onSubmit} className="flex gap-2">
               <input
