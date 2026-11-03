@@ -47,7 +47,7 @@ def _to_data(row: UserSettings) -> SettingsData:
 
 
 @router.get("", response_model=SettingsData)
-async def get_settings_endpoint(
+def get_settings_endpoint(
     user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SettingsData:
@@ -59,7 +59,7 @@ async def get_settings_endpoint(
 
 
 @router.put("", response_model=SettingsData)
-async def put_settings_endpoint(
+def put_settings_endpoint(
     payload: SettingsData,
     user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),

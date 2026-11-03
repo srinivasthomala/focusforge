@@ -38,7 +38,7 @@ app.include_router(settings.router)
 
 
 @app.get("/")
-async def root():
+def root():
     return {
         "message": "FocusForge API",
         "version": "0.1.0",
@@ -47,7 +47,7 @@ async def root():
 
 
 @app.get("/health")
-async def health():
+def health():
     return {"status": "ok"}
 
 

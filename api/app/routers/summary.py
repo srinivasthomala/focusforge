@@ -72,7 +72,7 @@ def _enforce_guards(db: Session, client_ip: str) -> None:
 
 
 @router.post("/summary", response_model=SummaryResponse)
-async def generate_summary_endpoint(
+def generate_summary_endpoint(
     payload: SummaryRequest,
     request: Request,
     user_id: str = Depends(get_current_user),

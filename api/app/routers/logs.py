@@ -11,7 +11,7 @@ router = APIRouter()
 
 
 @router.post("/logs")
-async def receive_logs(
+def receive_logs(
     batch: LogBatch,
     user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -44,7 +44,7 @@ async def receive_logs(
 
 
 @router.get("/logs/count")
-async def get_log_count(
+def get_log_count(
     user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

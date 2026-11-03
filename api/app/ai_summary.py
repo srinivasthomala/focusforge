@@ -106,7 +106,11 @@ def _format_stats_prompt(stats: DailyStats) -> str:
 def _generate_with_claude(stats: DailyStats, settings: Settings) -> str:
     import anthropic
 
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    # The SDK default timeout is 10 minutes; a hung call would pin a worker
+    # thread that long. Fail fast and let the caller use the fallback.
+    client = anthropic.Anthropic(
+        api_key=settings.anthropic_api_key, timeout=30.0, max_retries=2
+    )
     response = client.messages.create(
         model=settings.anthropic_model,
         max_tokens=300,

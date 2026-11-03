@@ -31,7 +31,7 @@ def _to_info(row: ApiKey) -> ApiKeyInfo:
 
 
 @router.get("", response_model=list[ApiKeyInfo])
-async def list_api_keys(
+def list_api_keys(
     user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[ApiKeyInfo]:
@@ -44,7 +44,7 @@ async def list_api_keys(
 
 
 @router.post("", response_model=ApiKeyCreateResponse)
-async def create_api_key(
+def create_api_key(
     payload: ApiKeyCreateRequest,
     user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -64,7 +64,7 @@ async def create_api_key(
 
 
 @router.delete("/{key_id}", status_code=204)
-async def delete_api_key(
+def delete_api_key(
     key_id: int,
     user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
