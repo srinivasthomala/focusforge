@@ -208,6 +208,21 @@ def test_day_stats_are_scoped_to_the_user_and_their_local_day(db_session):
     assert json.loads(tb.execute("get_day_stats", {"date": "2026-07-04"})[0])["has_activity"] is False
 
 
+def test_empty_range_points_to_latest_activity(db_session):
+    import json
+
+    tb = Toolbox(db_session, "me", UTC)
+    data = json.loads(tb.execute("get_day_stats", {"date": "2026-07-10"})[0])
+    assert data["most_recent_activity_date"] is None  # no data at all
+    add_log(db_session, "me", datetime(2026, 7, 4, 10, tzinfo=UTC), minutes=25)
+    add_log(db_session, "other", datetime(2026, 7, 9, 10, tzinfo=UTC), minutes=25)
+    data = json.loads(tb.execute(
+        "get_daily_breakdown", {"start_date": "2026-07-06", "end_date": "2026-07-10"})[0])
+    assert data["most_recent_activity_date"] == "2026-07-04"  # not the other user's
+    data = json.loads(tb.execute("get_day_stats", {"date": "2026-07-04"})[0])
+    assert "most_recent_activity_date" not in data
+
+
 def test_breakdown_and_bad_ranges(db_session):
     import json
 

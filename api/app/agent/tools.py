@@ -16,7 +16,7 @@ from datetime import date, datetime, timedelta, timezone, tzinfo
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, ValidationError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.ai_summary import aggregate_stats
@@ -220,11 +220,24 @@ class Toolbox:
         ).all()
         return [(local_date(r.occurred_at, self.tz), activity_log_to_log_entry(r)) for r in rows]
 
+    def _latest_activity(self) -> str | None:
+        latest = self.db.scalar(
+            select(func.max(ActivityLog.occurred_at)).where(ActivityLog.user_id == self.user_id)
+        )
+        return local_date(latest, self.tz).isoformat() if latest is not None else None
+
+    def _with_latest_if_empty(self, data: dict, empty: bool) -> dict:
+        # An empty range is a dead end on its own; point the model at the most
+        # recent day that does have data so it can offer that instead.
+        if empty:
+            data["most_recent_activity_date"] = self._latest_activity()
+        return data
+
     # -- tools -----------------------------------------------------------------
     def _day_stats(self, args: _Day) -> dict:
         d = self._parse_date(args.date)
         stats = aggregate_stats([log for _, log in self._logs(d, d)])
-        return {
+        data = {
             "date": d.isoformat(),
             "focus_minutes": stats.total_minutes,
             "focus_sessions": stats.focus_sessions,
@@ -232,11 +245,13 @@ class Toolbox:
             "top_distractions": stats.top_distractions,
             "has_activity": stats.entry_count > 0,
         }
+        return self._with_latest_if_empty(data, stats.entry_count == 0)
 
     def _daily_breakdown(self, args: _Range) -> dict:
         first, last = self._range(args.start_date, args.end_date)
         by_day: dict[date, list] = {}
-        for day, log in self._logs(first, last):
+        logs = self._logs(first, last)
+        for day, log in logs:
             by_day.setdefault(day, []).append(log)
         days = []
         d = first
@@ -252,10 +267,11 @@ class Toolbox:
                 }
             )
             d += timedelta(days=1)
-        return {
+        data = {
             "days": days,
             "total_focus_minutes": sum(x["focus_minutes"] for x in days),
         }
+        return self._with_latest_if_empty(data, not logs)
 
     def _top_distractions(self, args: _TopDistractions) -> dict:
         first, last = self._range(args.start_date, args.end_date)
