@@ -216,6 +216,8 @@ function logActivity(entry) {
   saveState();
 }
 
+const LOG_BATCH_SIZE = 500;
+
 // Send logs to backend
 async function sendLogsToBackend() {
   await ensureStateLoaded();
@@ -233,31 +235,41 @@ async function sendLogsToBackend() {
 
   const apiBaseUrl = await getApiBaseUrl();
 
-  const logsToSend = activityLogs;
-  activityLogs = [];
-  await saveState();
+  // The API accepts at most 1000 logs per request; stay well under it so a
+  // long offline queue drains in chunks instead of failing as one big batch.
+  while (activityLogs.length > 0) {
+    const logsToSend = activityLogs.slice(0, LOG_BATCH_SIZE);
+    activityLogs = activityLogs.slice(LOG_BATCH_SIZE);
+    await saveState();
 
-  try {
-    const response = await fetch(`${apiBaseUrl}/logs`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({ logs: logsToSend })
-    });
+    try {
+      const response = await fetch(`${apiBaseUrl}/logs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({ logs: logsToSend })
+      });
 
-    if (response.ok) {
-      console.log(`Sent ${logsToSend.length} logs to backend`);
-    } else {
+      if (response.ok) {
+        console.log(`Sent ${logsToSend.length} logs to backend`);
+        continue;
+      }
+      if (response.status === 400 || response.status === 422) {
+        // The server rejected the data itself; retrying the same batch would
+        // fail forever and block everything queued behind it.
+        console.error(`Dropping ${logsToSend.length} logs the server rejected:`, response.status);
+        continue;
+      }
       console.error('Failed to send logs:', response.status, response.statusText);
-      activityLogs = [...logsToSend, ...activityLogs];
-      await saveState();
+    } catch (error) {
+      console.error('Error sending logs:', error);
     }
-  } catch (error) {
-    console.error('Error sending logs:', error);
+    // Transient failure (network, 401, 429, 5xx): requeue and retry later.
     activityLogs = [...logsToSend, ...activityLogs];
     await saveState();
+    return;
   }
 }
 

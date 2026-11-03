@@ -1,5 +1,15 @@
-from pydantic import BaseModel
+import math
+
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Literal
+
+# Ingest bounds. Long URLs (big query strings) are normal, so they are trimmed
+# rather than rejected: the extension retries a failed batch, and one long URL
+# must not poison the whole queue.
+MAX_LOGS_PER_BATCH = 1000
+MAX_URL_LENGTH = 2048
+MAX_DOMAIN_LENGTH = 253
+MAX_MINUTES_PER_ENTRY = 24 * 60
 
 
 # Default blocklist for users who haven't customized theirs (mirrors the
@@ -10,17 +20,35 @@ BlockingMode = Literal["focus-only", "always"]
 
 
 class LogEntry(BaseModel):
-    userId: str = ""  # server-assigned from the caller's credential; ignored if sent
-    timestamp: str
+    userId: str = Field("", max_length=255)  # server-assigned; ignored if sent
+    timestamp: str = Field(max_length=64)
     url: str
     domain: str
     minutesActive: float
     isFocusSession: bool
     isDistractionAttempt: bool
 
+    @field_validator("url")
+    @classmethod
+    def _trim_url(cls, v: str) -> str:
+        return v[:MAX_URL_LENGTH]
+
+    @field_validator("domain")
+    @classmethod
+    def _trim_domain(cls, v: str) -> str:
+        return v[:MAX_DOMAIN_LENGTH]
+
+    @field_validator("minutesActive")
+    @classmethod
+    def _clamp_minutes(cls, v: float) -> float:
+        # A laptop asleep mid-session can report days; NaN/inf can't be stored.
+        if not math.isfinite(v):
+            raise ValueError("minutesActive must be a finite number")
+        return min(max(v, 0.0), MAX_MINUTES_PER_ENTRY)
+
 
 class LogBatch(BaseModel):
-    logs: List[LogEntry]
+    logs: List[LogEntry] = Field(max_length=MAX_LOGS_PER_BATCH)
 
 
 class WeekData(BaseModel):

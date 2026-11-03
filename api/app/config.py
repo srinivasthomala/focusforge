@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,8 +21,15 @@ class Settings(BaseSettings):
 
     # Abuse guards for the public demo (only real Claude calls count against these).
     ai_daily_generation_limit: int = 50  # hard ceiling per UTC day across all users
-    ai_rate_limit_per_ip: int = 5  # max generations per IP within the window
-    ai_rate_limit_window_seconds: int = 3600  # the per-IP window (1 hour)
+    # Max generations per signed-in user within the window. Keyed on the user,
+    # not the IP: headers like X-Forwarded-For are client-controlled, and web
+    # traffic reaches the API through Vercel, so IPs are shared anyway. The old
+    # AI_RATE_LIMIT_PER_IP env name is still accepted.
+    ai_rate_limit_per_user: int = Field(
+        5,
+        validation_alias=AliasChoices("ai_rate_limit_per_user", "ai_rate_limit_per_ip"),
+    )
+    ai_rate_limit_window_seconds: int = 3600  # the per-user window (1 hour)
 
     # Supabase auth. The dashboard authenticates with a Supabase access token;
     # the extension uses FocusForge API keys instead, so it needs none of this.

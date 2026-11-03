@@ -99,7 +99,7 @@ See the [README](README.md#architecture) for the production diagram.
 | `SUPABASE_JWT_SECRET` | No | Legacy HS256 fallback for projects not using asymmetric keys |
 | `ANTHROPIC_API_KEY` | No | Enables real Claude summaries (fallback summary when unset) |
 | `ANTHROPIC_MODEL` | No | Defaults to `claude-opus-4-8` |
-| `AI_DAILY_GENERATION_LIMIT`, `AI_RATE_LIMIT_PER_IP`, `AI_RATE_LIMIT_WINDOW_SECONDS` | No | Abuse guards on Claude calls (defaults: 50/day, 5 per IP per hour) |
+| `AI_DAILY_GENERATION_LIMIT`, `AI_RATE_LIMIT_PER_USER`, `AI_RATE_LIMIT_WINDOW_SECONDS` | No | Abuse guards on Claude calls (defaults: 50/day across all users, 5 per user per hour) |
 | `CORS_ALLOWED_ORIGINS` | No | Comma-separated origins; defaults to `http://localhost:3000` |
 
 **Web (`web/.env.local`)**

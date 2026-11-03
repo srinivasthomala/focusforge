@@ -117,6 +117,9 @@ def _generate_with_claude(stats: DailyStats, settings: Settings) -> str:
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": _format_stats_prompt(stats)}],
     )
+    if response.stop_reason == "max_tokens":
+        # A cut-off summary would be cached as if complete; use the fallback.
+        raise ValueError("Claude summary was truncated at max_tokens")
     text = "".join(
         block.text for block in response.content if block.type == "text"
     ).strip()

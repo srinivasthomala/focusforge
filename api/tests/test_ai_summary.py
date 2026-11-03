@@ -60,3 +60,32 @@ def test_generate_summary_empty_day_uses_fallback():
     text, model = generate_summary([])
     assert model == FALLBACK_MODEL
     assert isinstance(text, str) and text
+
+
+def test_truncated_claude_reply_falls_back(monkeypatch):
+    # A max_tokens cut-off must not be served (and cached) as a real summary.
+    import sys
+    import types
+
+    from app import ai_summary
+    from app.config import Settings
+
+    class FakeMessages:
+        def create(self, **_):
+            block = types.SimpleNamespace(type="text", text="You focused for")
+            return types.SimpleNamespace(stop_reason="max_tokens", content=[block])
+
+    fake = types.SimpleNamespace(
+        Anthropic=lambda **_: types.SimpleNamespace(messages=FakeMessages())
+    )
+    monkeypatch.setitem(sys.modules, "anthropic", fake)
+    monkeypatch.setattr(ai_summary, "get_settings", lambda: Settings(anthropic_api_key="k"))
+    logs = [
+        types.SimpleNamespace(
+            minutesActive=30, isFocusSession=True, isDistractionAttempt=False,
+            domain="docs.python.org", url="https://docs.python.org",
+            timestamp="2026-07-04T10:00:00Z",
+        )
+    ]
+    _, model = ai_summary.generate_summary(logs)
+    assert model == ai_summary.FALLBACK_MODEL

@@ -1,6 +1,6 @@
 """Shared helper for choosing which day the dashboard and summary center on."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -16,7 +16,9 @@ def resolve_dashboard_date(db: Session, user_id: str) -> tuple[date, bool]:
     break (or when a demo account has been idle). Falls back to today when the
     user has no logs at all.
     """
-    today = datetime.now().date()
+    # Logs are stored as UTC, so "today" must be the UTC date too. A naive
+    # local now() only matched by accident because the server runs in UTC.
+    today = datetime.now(timezone.utc).date()
     latest = db.scalar(
         select(func.max(ActivityLog.occurred_at)).where(ActivityLog.user_id == user_id)
     )

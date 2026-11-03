@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
@@ -8,6 +10,18 @@ from app.database import get_db
 from app.db_models import ActivityLog, log_entry_to_orm
 
 router = APIRouter()
+log = logging.getLogger(__name__)
+
+
+def _user_log_count(db: Session, user_id: str) -> int:
+    return int(
+        db.scalar(
+            select(func.count())
+            .select_from(ActivityLog)
+            .where(ActivityLog.user_id == user_id)
+        )
+        or 0
+    )
 
 
 @router.post("/logs")
@@ -32,15 +46,16 @@ def receive_logs(
     try:
         db.add_all(rows)
         db.commit()
-        total = db.scalar(select(func.count()).select_from(ActivityLog)) or 0
         return {
             "status": "success",
             "received": len(batch.logs),
-            "total_stored": int(total),
+            "total_stored": _user_log_count(db, user_id),  # this user's rows only
         }
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        # Log the real error server-side; never echo DB internals to clients.
+        log.exception("failed to store %d logs for user %s", len(rows), user_id)
+        raise HTTPException(status_code=500, detail="Could not store logs. Please retry.")
 
 
 @router.get("/logs/count")
@@ -49,12 +64,4 @@ def get_log_count(
     db: Session = Depends(get_db),
 ):
     """Get the count of stored log rows for the authenticated user."""
-    n = (
-        db.scalar(
-            select(func.count())
-            .select_from(ActivityLog)
-            .where(ActivityLog.user_id == user_id)
-        )
-        or 0
-    )
-    return {"count": int(n)}
+    return {"count": _user_log_count(db, user_id)}

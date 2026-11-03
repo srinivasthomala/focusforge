@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import jwt
 from fastapi import Depends, Header, HTTPException, status
@@ -24,6 +24,8 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
+
+LAST_USED_WRITE_INTERVAL = timedelta(minutes=5)
 from app.db_models import ApiKey
 
 API_KEY_PREFIX = "ff_"
@@ -51,8 +53,15 @@ def _user_from_api_key(token: str, db: Session) -> str | None:
     ).first()
     if row is None:
         return None
-    row.last_used_at = datetime.now(timezone.utc)
-    db.commit()
+    # Record usage at most every few minutes: a DB write + commit on every
+    # extension request is pure overhead for a "last used" display.
+    now = datetime.now(timezone.utc)
+    last = row.last_used_at
+    if last is not None and last.tzinfo is None:
+        last = last.replace(tzinfo=timezone.utc)
+    if last is None or now - last > LAST_USED_WRITE_INTERVAL:
+        row.last_used_at = now
+        db.commit()
     return row.user_id
 
 

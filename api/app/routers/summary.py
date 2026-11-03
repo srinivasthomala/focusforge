@@ -21,11 +21,14 @@ router = APIRouter()
 
 
 def _client_ip(request: Request) -> str:
-    """Best-effort client IP, honoring a proxy's X-Forwarded-For first hop."""
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    """Client IP for the audit record only; never used for limits.
+
+    Fly's proxy sets Fly-Client-IP itself (clients can't forge it). Requests
+    proxied through Vercel will show a Vercel address, which is fine for a log.
+    """
+    return request.headers.get("fly-client-ip") or (
+        request.client.host if request.client else "unknown"
+    )
 
 
 def _iso(dt: datetime) -> str:
@@ -34,14 +37,20 @@ def _iso(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _enforce_guards(db: Session, client_ip: str) -> None:
-    """Raise 429 if the global daily cap or per-IP rate limit is exceeded.
+def _reserve_generation(db: Session, user_id: str, client_ip: str) -> AIGenerationEvent:
+    """Claim one slot under the global daily cap and the per-user limit, or 429.
 
-    Only called when a request is actually about to hit Claude, so deterministic
-    (empty-day / no-key) responses never consume quota.
+    The slot is inserted and committed *before* counting, so concurrent
+    requests can't all pass a check-then-act race: each one counts every
+    committed reservation, including its own. Under a burst this errs toward
+    rejecting, never toward exceeding the cap. The caller releases the slot
+    if Claude ends up not being used.
     """
     settings = get_settings()
     now = datetime.now(timezone.utc)
+    event = AIGenerationEvent(client_ip=client_ip, user_id=user_id, created_at=now)
+    db.add(event)
+    db.commit()
 
     day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     daily_count = db.scalar(
@@ -49,26 +58,30 @@ def _enforce_guards(db: Session, client_ip: str) -> None:
         .select_from(AIGenerationEvent)
         .where(AIGenerationEvent.created_at >= day_start)
     )
-    if daily_count >= settings.ai_daily_generation_limit:
-        raise HTTPException(
-            status_code=429,
-            detail="Daily AI summary limit reached. Showing the standard summary instead.",
-        )
-
     window_start = now - timedelta(seconds=settings.ai_rate_limit_window_seconds)
-    ip_count = db.scalar(
+    user_count = db.scalar(
         select(func.count())
         .select_from(AIGenerationEvent)
         .where(
-            AIGenerationEvent.client_ip == client_ip,
+            AIGenerationEvent.user_id == user_id,
             AIGenerationEvent.created_at >= window_start,
         )
     )
-    if ip_count >= settings.ai_rate_limit_per_ip:
-        raise HTTPException(
-            status_code=429,
-            detail="You're generating summaries too quickly. Please try again later.",
-        )
+
+    detail = None
+    if daily_count > settings.ai_daily_generation_limit:
+        detail = "Daily AI summary limit reached. Showing the standard summary instead."
+    elif user_count > settings.ai_rate_limit_per_user:
+        detail = "You're generating summaries too quickly. Please try again later."
+    if detail:
+        _release(db, event)
+        raise HTTPException(status_code=429, detail=detail)
+    return event
+
+
+def _release(db: Session, event: AIGenerationEvent) -> None:
+    db.delete(event)
+    db.commit()
 
 
 @router.post("/summary", response_model=SummaryResponse)
@@ -113,21 +126,22 @@ def generate_summary_endpoint(
     will_call_claude = (
         aggregate_stats(logs).entry_count > 0 and bool(settings.anthropic_api_key)
     )
-    if will_call_claude:
-        _enforce_guards(db, _client_ip(request))
+    reservation = (
+        _reserve_generation(db, user_id, _client_ip(request)) if will_call_claude else None
+    )
 
-    summary_text, model = generate_summary(logs)
+    try:
+        summary_text, model = generate_summary(logs)
+    except Exception:
+        if reservation is not None:
+            _release(db, reservation)
+        raise
     now = datetime.now(timezone.utc)
 
-    # Record only genuine Claude calls against the caps.
-    if model != FALLBACK_MODEL:
-        db.add(
-            AIGenerationEvent(
-                client_ip=_client_ip(request),
-                user_id=user_id,
-                created_at=now,
-            )
-        )
+    # Only genuine Claude calls count against the caps: if we fell back to the
+    # deterministic summary, give the slot back.
+    if reservation is not None and model == FALLBACK_MODEL:
+        _release(db, reservation)
 
     # Only persist genuine Claude summaries. Deterministic fallbacks are free to
     # recompute and must always reflect live stats, so caching them would let the
