@@ -18,7 +18,7 @@ interface ApiKeyInfo {
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 export default function Settings() {
-  const [blocklist, setBlocklist] = useState<string[]>(['youtube.com', 'twitter.com', 'reddit.com']);
+  const [blocklist, setBlocklist] = useState<string[]>([]);
   const [newDomain, setNewDomain] = useState('');
   const [blockingMode, setBlockingMode] = useState<BlockingMode>('focus-only');
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');

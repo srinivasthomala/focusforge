@@ -6,7 +6,7 @@ def test_defaults_when_never_set(client):
     assert r.status_code == 200
     body = r.json()
     assert body["blockingMode"] == "focus-only"
-    assert body["blocklist"] == ["youtube.com", "twitter.com", "reddit.com"]
+    assert body["blocklist"] == []  # nothing is blocked until the user chooses
 
 
 def test_put_normalizes_dedupes_and_persists(client):

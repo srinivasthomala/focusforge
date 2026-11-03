@@ -71,7 +71,7 @@ The extension authenticates with that API key. Dashboard users authenticate with
 ## Step 5: Try the full flow
 
 1. Open the extension popup and start a focus session.
-2. Visit a blocked site (default blocklist: `youtube.com`, `twitter.com`, `reddit.com`). The tab is redirected to the blocked page.
+2. Add a site to the blocklist (nothing is blocked by default), start a focus session, and visit it. The tab is redirected to the blocked page.
 3. End the session. Activity logs sync to the API and are stored in PostgreSQL.
 4. Refresh the dashboard to see focus minutes, distractions, and the weekly chart. Click **Generate AI Summary** for the Claude-written insight.
 5. Edit the blocklist or blocking mode in **Settings**. The extension picks up changes within about a minute (immediately when the popup opens).

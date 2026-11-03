@@ -14,7 +14,8 @@ MAX_MINUTES_PER_ENTRY = 24 * 60
 
 # Default blocklist for users who haven't customized theirs (mirrors the
 # extension's built-in default so both agree before the first sync).
-DEFAULT_BLOCKLIST = ["youtube.com", "twitter.com", "reddit.com"]
+# Empty on purpose: nothing is blocked until the user chooses what to block.
+DEFAULT_BLOCKLIST: list[str] = []
 
 BlockingMode = Literal["focus-only", "always"]
 

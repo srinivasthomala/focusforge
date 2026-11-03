@@ -239,10 +239,11 @@ def test_propose_change_does_not_apply_it(db_session):
 
 def test_noop_change_is_rejected(db_session):
     tb = Toolbox(db_session, "me", UTC)
-    # youtube.com is in the default blocklist already.
+    # The blocklist starts empty: unblocking a site that isn't blocked, with the
+    # mode unchanged, would change nothing.
     _, err = tb.execute(
         "propose_settings_change",
-        {"add_domains": ["youtube.com"], "remove_domains": [], "blocking_mode": "focus-only"},
+        {"add_domains": [], "remove_domains": ["youtube.com"], "blocking_mode": "focus-only"},
     )
     assert err and db_session.query(AgentPendingAction).count() == 0
 

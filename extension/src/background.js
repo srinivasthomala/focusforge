@@ -1,7 +1,9 @@
 // FocusForge Background Service Worker
 
 // State management
-const DEFAULT_BLOCKLIST = ['youtube.com', 'twitter.com', 'reddit.com'];
+// Empty on purpose: nothing is blocked until the user adds sites in the
+// dashboard (or asks the Focus Coach). Mirrors the API DEFAULT_BLOCKLIST.
+const DEFAULT_BLOCKLIST = [];
 
 let focusSessionActive = false;
 let sessionEndTime = null;
