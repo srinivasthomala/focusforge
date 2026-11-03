@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import logs, dashboard, summary, api_keys, settings
+from app.routers import agent, logs, dashboard, summary, api_keys, settings
 from app.config import get_settings
 from app.database import init_db
 
@@ -35,6 +35,7 @@ app.include_router(dashboard.router, tags=["dashboard"])
 app.include_router(summary.router, tags=["summary"])
 app.include_router(api_keys.router)
 app.include_router(settings.router)
+app.include_router(agent.router)
 
 
 @app.get("/")

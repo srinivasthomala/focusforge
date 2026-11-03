@@ -51,11 +51,37 @@ def get_settings_endpoint(
     user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SettingsData:
+    # No saved settings yet: hand back the defaults (no row created on read).
+    return load_settings(db, user_id)
+
+
+def load_settings(db: Session, user_id: str) -> SettingsData:
     row = db.get(UserSettings, user_id)
     if row is None:
-        # No saved settings yet — hand back the defaults (no row created on read).
         return SettingsData(blocklist=list(DEFAULT_BLOCKLIST), blockingMode="focus-only")
     return _to_data(row)
+
+
+def save_settings(
+    db: Session, user_id: str, blocklist: list[str], blocking_mode: str
+) -> SettingsData:
+    """Normalize and persist a user's settings (creates the row if needed)."""
+    blocklist = normalize_blocklist(blocklist)
+    blocklist_json = json.dumps(blocklist)
+
+    row = db.get(UserSettings, user_id)
+    if row is None:
+        row = UserSettings(
+            user_id=user_id,
+            blocklist=blocklist_json,
+            blocking_mode=blocking_mode,
+        )
+        db.add(row)
+    else:
+        row.blocklist = blocklist_json
+        row.blocking_mode = blocking_mode
+    db.commit()
+    return SettingsData(blocklist=blocklist, blockingMode=blocking_mode)
 
 
 @router.put("", response_model=SettingsData)
@@ -64,20 +90,4 @@ def put_settings_endpoint(
     user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SettingsData:
-    blocklist = normalize_blocklist(payload.blocklist)
-    blocklist_json = json.dumps(blocklist)
-
-    row = db.get(UserSettings, user_id)
-    if row is None:
-        row = UserSettings(
-            user_id=user_id,
-            blocklist=blocklist_json,
-            blocking_mode=payload.blockingMode,
-        )
-        db.add(row)
-    else:
-        row.blocklist = blocklist_json
-        row.blocking_mode = payload.blockingMode
-    db.commit()
-
-    return SettingsData(blocklist=blocklist, blockingMode=payload.blockingMode)
+    return save_settings(db, user_id, payload.blocklist, payload.blockingMode)

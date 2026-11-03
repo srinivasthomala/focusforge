@@ -100,6 +100,8 @@ See the [README](README.md#architecture) for the production diagram.
 | `ANTHROPIC_API_KEY` | No | Enables real Claude summaries (fallback summary when unset) |
 | `ANTHROPIC_MODEL` | No | Defaults to `claude-opus-4-8` |
 | `AI_DAILY_GENERATION_LIMIT`, `AI_RATE_LIMIT_PER_USER`, `AI_RATE_LIMIT_WINDOW_SECONDS` | No | Abuse guards on Claude calls (defaults: 50/day across all users, 5 per user per hour) |
+| `AGENT_MODEL`, `AGENT_EFFORT` | No | Focus Coach agent model and effort (defaults: `claude-haiku-5-5`, `medium`). Needs `ANTHROPIC_API_KEY` |
+| `AGENT_DAILY_LIMIT_PER_USER`, `AGENT_DAILY_LIMIT_GLOBAL`, `AGENT_MAX_STEPS`, `AGENT_DEADLINE_SECONDS`, `AGENT_MAX_OUTPUT_TOKENS` | No | Agent guards (defaults: 5 questions/user/day, 500/day total, 6 steps, 45s, 12k output tokens per question) |
 | `CORS_ALLOWED_ORIGINS` | No | Comma-separated origins; defaults to `http://localhost:3000` |
 
 **Web (`web/.env.local`)**

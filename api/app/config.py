@@ -31,6 +31,16 @@ class Settings(BaseSettings):
     )
     ai_rate_limit_window_seconds: int = 3600  # the per-user window (1 hour)
 
+    # Focus agent (POST /agent/chat). Haiku keeps a free tier affordable; a paid
+    # tier can point AGENT_MODEL at a bigger model without code changes.
+    agent_model: str = "claude-haiku-5-5"
+    agent_effort: str = "medium"  # low | medium | high | xhigh | max
+    agent_daily_limit_per_user: int = 5  # questions per user per local day
+    agent_daily_limit_global: int = 500  # hard ceiling per UTC day, all users
+    agent_max_steps: int = 6  # Claude calls per question (tool round trips)
+    agent_deadline_seconds: float = 45.0  # wall clock per question
+    agent_max_output_tokens: int = 12000  # summed across a question's calls
+
     # Supabase auth. The dashboard authenticates with a Supabase access token;
     # the extension uses FocusForge API keys instead, so it needs none of this.
     #

@@ -126,6 +126,50 @@ class UserSettings(Base):
     )
 
 
+
+class AgentRun(Base):
+    """One row per agent question: the quota counter and the audit trace.
+
+    Inserted with status "running" *before* calling Claude so concurrent
+    requests can't race past the per-user and global daily limits.
+    """
+
+    __tablename__ = "agent_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="running")
+    model: Mapped[str] = mapped_column(String(64), nullable=False)
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    reply: Mapped[str | None] = mapped_column(Text, nullable=True)
+    steps: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    trace: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+
+
+class AgentPendingAction(Base):
+    """A settings change the agent proposed. Nothing is applied until the user
+    confirms it in the UI (human-in-the-loop for every write)."""
+
+    __tablename__ = "agent_pending_actions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    payload: Mapped[str] = mapped_column(Text, nullable=False)  # JSON
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 def log_entry_to_orm(e: LogEntry) -> ActivityLog:
     return ActivityLog(
         user_id=e.userId,

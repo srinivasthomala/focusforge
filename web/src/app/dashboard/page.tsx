@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { WeeklyChart } from '@/components/WeeklyChart';
 import { Nav } from '@/components/Nav';
+import { FocusCoach } from '@/components/FocusCoach';
 import { authedFetch } from '@/lib/api';
 
 interface DashboardData {
@@ -249,6 +250,9 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Agent: questions about your data + confirmed settings changes */}
+        <FocusCoach />
 
         {/* Weekly Chart */}
         <Card>
