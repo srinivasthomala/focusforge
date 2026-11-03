@@ -116,6 +116,8 @@ class UserSettings(Base):
     blocking_mode: Mapped[str] = mapped_column(
         String(32), nullable=False, default="focus-only"
     )
+    # IANA zone (e.g. "Asia/Kolkata") from the user's browser; NULL means UTC.
+    timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

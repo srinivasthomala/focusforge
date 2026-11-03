@@ -15,5 +15,13 @@ export async function authedFetch(path: string, init: RequestInit = {}) {
   if (session?.access_token) {
     headers.set('Authorization', `Bearer ${session.access_token}`);
   }
+  // The API buckets activity into the user's local days ("today", the weekly
+  // chart), so tell it which zone the browser is in, e.g. "Asia/Kolkata".
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz) headers.set('X-Timezone', tz);
+  } catch {
+    /* very old browser: the API falls back to the saved zone, then UTC */
+  }
   return fetch(path, { ...init, headers });
 }

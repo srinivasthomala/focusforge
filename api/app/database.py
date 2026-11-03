@@ -33,3 +33,19 @@ def init_db() -> None:
     from app import db_models  # noqa: F401 — register model metadata
 
     Base.metadata.create_all(bind=engine)
+    _add_missing_columns()
+
+
+def _add_missing_columns() -> None:
+    """Tiny forward-only migrations for columns added after a table existed.
+
+    create_all only creates missing tables. Each statement is idempotent.
+    """
+    if engine.dialect.name != "postgresql":
+        return  # SQLite (tests) always starts from a fresh create_all
+    from sqlalchemy import text
+
+    with engine.begin() as conn:
+        conn.execute(
+            text("ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS timezone VARCHAR(64)")
+        )

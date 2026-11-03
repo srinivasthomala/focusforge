@@ -11,3 +11,4 @@ pyjwt==2.13.0
 cryptography==44.0.0
 
 
+tzdata==2025.2

@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import Date, cast, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.activity import resolve_dashboard_date
@@ -16,6 +16,7 @@ from app.db_models import (
     activity_log_to_log_entry,
 )
 from app.models import SummaryRequest, SummaryResponse
+from app.timezones import day_range_utc, get_user_timezone
 
 router = APIRouter()
 
@@ -90,6 +91,7 @@ def generate_summary_endpoint(
     request: Request,
     user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
+    tz: tzinfo = Depends(get_user_timezone),
 ) -> SummaryResponse:
     """Generate (or return a cached) AI summary of the user's focus day.
 
@@ -97,7 +99,7 @@ def generate_summary_endpoint(
     """
     # Summarize the same day the dashboard shows (today, or the most recent
     # active day) so the button and the headline stats stay in sync.
-    today, _ = resolve_dashboard_date(db, user_id)
+    today, _ = resolve_dashboard_date(db, user_id, tz)
 
     cached = db.scalars(
         select(AISummary).where(
@@ -114,10 +116,12 @@ def generate_summary_endpoint(
             generatedAt=_iso(cached.created_at),
         )
 
-    # Pull today's logs for this user.
+    # Pull this user's logs for that local day.
+    start, end = day_range_utc(today, today, tz)
     stmt = select(ActivityLog).where(
         ActivityLog.user_id == user_id,
-        cast(ActivityLog.occurred_at, Date) == today,
+        ActivityLog.occurred_at >= start,
+        ActivityLog.occurred_at < end,
     )
     logs = [activity_log_to_log_entry(r) for r in db.scalars(stmt).all()]
 
