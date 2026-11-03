@@ -1,26 +1,84 @@
 name: Keep services warm
 
 # Free-tier services sleep when idle: the Supabase project pauses after ~7 days
-# of inactivity (which needs a *manual* restore), and the Fly machine scales to
-# zero. This pings them daily so the live demo never goes dark between visits.
-# A failed run doubles as an uptime alert — GitHub notifies you.
+# of inactivity (and needs a manual restore), and the Fly machine scales to zero.
 #
-# Note: GitHub disables scheduled workflows after ~60 days with no repo activity,
-# and cron timing is best-effort — daily leaves plenty of margin either way.
+# A public JWKS ping was NOT enough: Supabase paused twice while it ran green,
+# because the key set never touches the database. So this run does real work:
+# a SQL query over the pooler, plus a sign-in attempt that makes the auth
+# service query auth.users.
+#
+# GitHub disables scheduled workflows after 60 days with no commits, which is
+# exactly when the demo goes quiet. The last step re-enables this workflow
+# through the API on every run so the schedule keeps itself alive.
+#
+# A failure opens (or comments on) a GitHub issue, so it isn't just one more email.
 
 on:
   schedule:
-    - cron: '23 7 * * *' # daily ~07:23 UTC (off-peak minute; cron is best-effort)
-  workflow_dispatch: {} # allow manual runs from the Actions tab
+    - cron: '23 7 * * *'  # daily ~07:23 UTC
+    - cron: '23 19 * * *' # and ~19:23 UTC, so one missed run still leaves margin
+  workflow_dispatch: {}
+
+permissions:
+  actions: write # re-enable this workflow
+  issues: write  # open an alert issue on failure
+  contents: read
 
 jobs:
   ping:
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: https://egqjlomtqsynwadwwlnd.supabase.co
     steps:
-      - name: Ping FocusForge API (Fly) — wakes it and exercises the DB path
-        run: curl -fsS -m 30 https://focusforge-api.fly.dev/health
+      - name: Ping FocusForge API (Fly)
+        run: curl -fsS -m 60 --retry 3 --retry-delay 10 https://focusforge-api.fly.dev/health
 
-      - name: Ping Supabase auth — keeps the free project from pausing
-        # JWKS is public (no apikey needed) and routes through the project's API
-        # gateway, which registers activity. /auth/v1/health needs an apikey (401).
-        run: curl -fsS -m 30 https://egqjlomtqsynwadwwlnd.supabase.co/auth/v1/.well-known/jwks.json > /dev/null
+      - name: Query the Supabase database
+        # Session pooler URL (IPv4). The direct db.* host is IPv6-only and
+        # unreachable from GitHub runners.
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL secret is not set"; exit 1
+          fi
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -tAc "select count(*) from auth.users" > /dev/null
+          echo "database query ok"
+
+      - name: Exercise Supabase auth
+        # Wrong credentials on purpose: the auth service still looks the user up
+        # in Postgres. A 400 invalid_credentials means auth + DB are both alive.
+        env:
+          KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          code=$(curl -s -m 30 -o body.json -w '%{http_code}' -X POST \
+            "$SUPABASE_URL/auth/v1/token?grant_type=password" \
+            -H "apikey: $KEY" -H "Content-Type: application/json" \
+            -d '{"email":"keepalive@focusforge.invalid","password":"not-a-real-password"}')
+          cat body.json; echo
+          if [ "$code" != "400" ] || ! grep -q invalid_credentials body.json; then
+            echo "::error::unexpected auth response $code"; exit 1
+          fi
+
+      - name: Keep this schedule from being auto-disabled
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/keep-warm.yml/enable"
+
+      - name: Open an alert issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          n=$(gh issue list -R "${{ github.repository }}" --label keep-warm --state open --json number -q '.[0].number')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" -R "${{ github.repository }}" --body "Failed again: $url"
+          else
+            gh label create keep-warm -R "${{ github.repository }}" --color d73a4a --force
+            gh issue create -R "${{ github.repository }}" --label keep-warm \
+              --title "Live demo keep-alive failing" \
+              --body "The keep-warm run failed: $url. If Supabase is paused, restore it from the dashboard."
+          fi

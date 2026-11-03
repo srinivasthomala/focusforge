@@ -156,7 +156,7 @@ Omit `--base-url` to target the production API.
 
 Fly secrets: `DATABASE_URL`, `SUPABASE_URL`, `CORS_ALLOWED_ORIGINS` (the Vercel origin), and optionally `ANTHROPIC_API_KEY`.
 
-A daily workflow (`.github/workflows/keep-warm.yml`) pings the API and Supabase so free-tier services don't hibernate.
+A twice-daily workflow (`.github/workflows/keep-warm.yml`) runs a real SQL query and an auth request against Supabase (a public ping alone did not stop the free-tier pause), wakes the API, re-enables its own schedule, and opens a `keep-warm` issue on failure. It needs the `SUPABASE_DB_URL` secret (session pooler connection string) and the `SUPABASE_PUBLISHABLE_KEY` variable.
 
 ## Releasing the extension
 
