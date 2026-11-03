@@ -10,6 +10,8 @@ This folder holds the marketing screenshots embedded in the top-level `README.md
 | `extension-popup.png` | Chrome extension popup with an **active** focus session — green status, live timer, distractions counter, blocklist visible. | Native popup size (~360 wide) |
 | `blocked-page.png` | The `src/blocked.html` page shown after attempting to visit `youtube.com` during a session. | 1440 × 900 |
 | `settings.png` | The `/settings` page with the blocking-mode radios and a populated blocklist. | 1440 × 900 |
+| `focus-coach-confirm.png` | Focus Coach card with a data answer and a pending change showing Confirm / Cancel. | Card crop |
+| `focus-coach-applied.png` | The same conversation after Confirm ("Applied"). | Card crop |
 | `hero.gif` *(optional)* | 5–8 second screen recording: start session in popup → try to visit a blocked site → land on blocked page → dashboard updates. | Whatever ScreenToGif outputs, < 5 MB |
 
 ## How to capture cleanly

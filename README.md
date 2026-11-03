@@ -1,7 +1,7 @@
 # FocusForge
 
 > **AI-powered focus and productivity SaaS for developers and creators.**
-> Block distracting sites with a Chrome extension, track focus sessions, and get Claude-generated insights into your productivity patterns — all in one dashboard.
+> Block distracting sites with a Chrome extension, track focus sessions, get Claude-generated insights, and ask a Claude-powered Focus Coach agent about your data. It can even change your blocklist, with your confirmation.
 
 <p align="left">
   <a href="https://github.com/srinivasthomala/focusforge/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/srinivasthomala/focusforge/actions/workflows/ci.yml/badge.svg" /></a>
@@ -33,6 +33,13 @@
   <img src="docs/screenshots/settings.png" alt="Settings page" width="32%" />
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/focus-coach-confirm.png" alt="Focus Coach agent proposing a blocklist change with Confirm and Cancel buttons" width="49%" />
+  &nbsp;
+  <img src="docs/screenshots/focus-coach-applied.png" alt="Focus Coach after the user confirmed the change" width="49%" />
+</p>
+<p align="center"><em>The Focus Coach answers from your real data and proposes changes. Nothing is applied until you press Confirm.</em></p>
+
 ---
 
 ## What it does
@@ -40,7 +47,9 @@
 - 🧱 **Block distractions on demand.** A Chrome (Manifest v3) extension intercepts navigation to user-defined domains while a focus session is active.
 - 📊 **Track focus time.** Activity logs are streamed from the extension to a FastAPI backend, persisted in Postgres, and aggregated into daily / weekly metrics.
 - 🤖 **AI-powered insights.** Anthropic Claude generates a personalized daily summary of your focus patterns, top distractions, and momentum trends.
+- 💬 **Focus Coach agent.** Ask "how did my focus go this week?" or "block reddit.com during focus sessions". A Claude tool-use agent looks up your data and proposes settings changes that you confirm with one click. [How it works ↓](#focus-coach-how-the-agent-works)
 - ⚙️ **Per-user settings.** Manage your blocklist and blocking mode from a Next.js dashboard; changes sync automatically to the extension.
+- 🌍 **Your local day.** "Today" and the weekly chart follow each user's timezone (DST-safe), not the server's.
 
 ---
 
@@ -57,6 +66,7 @@ flowchart LR
     subgraph "API (Fly.io)"
       API["FastAPI<br/>(SQLAlchemy · Pydantic)"]
       AI["Anthropic Claude<br/>summarizer"]
+      AGENT["Focus Coach<br/>tool-use loop"]
     end
     DB[("PostgreSQL<br/>(Neon)")]
 
@@ -65,7 +75,41 @@ flowchart LR
     WEB -- "POST /summary" --> API
     API -- "read / write logs" --> DB
     API -- "summarize daily activity" --> AI
+    WEB -- "POST /agent/chat" --> AGENT
+    AGENT -- "tool calls (scoped to the user)" --> DB
 ```
+
+---
+
+## Focus Coach: how the agent works
+
+The agent is a hand-written tool-use loop (`api/app/agent/loop.py`) rather than a framework, so every reliability decision is visible in about 150 lines.
+
+```mermaid
+flowchart LR
+    Q["User question"] --> L{"Claude<br/>(Haiku 5.5)"}
+    L -- "tool_use" --> T["Run tools<br/>(scoped to this user)"]
+    T -- "tool_result / is_error" --> L
+    L -- "end_turn" --> A["Answer"]
+    T -- "propose_settings_change" --> P["Pending action"]
+    P -- "user presses Confirm" --> S["Settings updated<br/>→ extension syncs"]
+```
+
+**Tools** (`api/app/agent/tools.py`, strict JSON schemas): `get_day_stats`, `get_daily_breakdown`, `get_top_distractions`, `get_settings`, and `propose_settings_change`. Every tool is bound to the signed-in user on the server, so whatever the model sends, it can only see that user's data.
+
+**What makes it safe to run unsupervised:**
+
+| Concern | How it's handled |
+| --- | --- |
+| Runaway loops and cost | Max 6 model calls, 45 s wall clock and 12k output tokens per question |
+| Abuse | 5 questions per user per local day plus a global daily cap. A slot is reserved *before* counting, so a burst of requests can't overshoot it. Failed runs don't use a question |
+| Writes | The model can only *propose* a change. It's stored as a pending action (15 min expiry) and applied only when the user presses Confirm. Confirm is idempotent |
+| Every `stop_reason` | `end_turn`, `tool_use`, `max_tokens` (reported as truncated), `refusal`, `pause_turn`, and anything unexpected |
+| Bad tool calls | Returned to Claude as `is_error` results it can correct, never an exception that kills the run |
+| API failures | SDK retries, a 20 s timeout per call, then a friendly message instead of a 500 |
+| Debugging | Each run stores a trace of every model call and tool call (stop reason, tokens, latency, errors) |
+
+The behavior is covered by 22 tests that drive the loop with a scripted fake Claude client, including tool errors, each stop reason, each limit, the quota, cross-user isolation and the confirm flow. They run in CI at no API cost.
 
 ---
 
@@ -76,10 +120,10 @@ flowchart LR
 | **Frontend** | Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn-style components, Recharts |
 | **Backend** | FastAPI, Pydantic v2, SQLAlchemy 2.0, Uvicorn |
 | **Database** | PostgreSQL 16 (Docker locally, Neon in prod) |
-| **AI** | Anthropic Claude (Opus) for summary generation |
+| **AI** | Anthropic Claude: Opus for the daily summary, Haiku 5.5 for the Focus Coach agent (hand-written tool-use loop, no framework) |
 | **Extension** | Chrome Manifest v3, vanilla JS service worker, tab-based navigation blocking |
 | **Deploy** | Vercel (web) · Fly.io (api) · Neon (db) · Supabase (auth) |
-| **CI** | GitHub Actions — lint, typecheck, tests |
+| **CI** | GitHub Actions: lint, typecheck, tests, auto-deploy of the API |
 
 ---
 
@@ -134,6 +178,10 @@ Visit http://localhost:3000 for the dashboard and http://localhost:8000/docs for
 - [x] Live demo deployed (Vercel + Fly.io + Neon + Supabase)
 - [x] Pytest suite + GitHub Actions CI (with badge)
 - [x] Packaged extension `.zip` published as a GitHub Release
+- [x] Focus Coach agent: Claude tool use with limits, quotas, traces and confirm-before-write
+- [x] Per-user timezones for "today" and the weekly chart
+- [ ] Live eval set for the agent
+- [ ] Chrome Web Store listing
 - [ ] Web test coverage (Vitest/Playwright)
 - [ ] Custom domain + branded auth screen
 
@@ -141,8 +189,8 @@ Visit http://localhost:3000 for the dashboard and http://localhost:8000/docs for
 
 ## About
 
-Built by **[Srinivas Thomala](mailto:srinivas.1796@gmail.com)** — a senior full-stack engineer focused on **AI-integrated SaaS products**. Available for freelance work via Upwork.
+Built by **[Srinivas Thomala](mailto:srinivas.1796@gmail.com)**, a senior backend engineer with 7+ years of experience (5 at Bloomberg building real-time financial data systems), focused on **reliable, AI-integrated SaaS products**. Available for freelance work via Upwork.
 
 ## License
 
-[MIT](LICENSE) — do whatever you want with it.
+[MIT](LICENSE). Do whatever you want with it.

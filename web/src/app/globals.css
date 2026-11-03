@@ -4,6 +4,8 @@
 
 @layer base {
   :root {
+    /* The app is dark-only: render native scrollbars and form controls dark. */
+    color-scheme: dark;
     --background: 224 71% 4%;
     --foreground: 213 31% 91%;
     --card: 224 71% 8%;
