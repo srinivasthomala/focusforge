@@ -161,6 +161,9 @@ async function handleMessage(request, sendResponse) {
     } else if (request.action === 'extendSession') {
       await extendFocusSession(request.minutes);
       sendResponse({ success: true });
+    } else if (request.action === 'setBlockingMode') {
+      await setBlockingMode(request.mode);
+      sendResponse({ success: true, blockingMode });
     } else if (request.action === 'syncNow') {
       // Just connected from the setup page: pull settings, send queued logs.
       sendResponse({ success: true });
@@ -425,6 +428,43 @@ async function fetchSettings() {
   } catch (error) {
     console.error('Error fetching settings:', error);
   }
+}
+
+// Switch between blocking only during sessions and blocking all the time.
+// With an account, the change is saved there (the dashboard is the source of
+// truth, and the next sync would undo a local-only change). The latest
+// blocklist is read first so a concurrent dashboard edit isn't overwritten.
+async function setBlockingMode(mode) {
+  if (mode !== 'always' && mode !== 'focus-only') {
+    throw new Error('Unknown blocking mode.');
+  }
+
+  const apiKey = await getApiKey();
+  if (apiKey) {
+    const apiBaseUrl = await getApiBaseUrl();
+    const headers = { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
+    let current;
+    try {
+      const response = await fetch(`${apiBaseUrl}/settings`, { headers });
+      if (!response.ok) throw new Error(String(response.status));
+      current = await response.json();
+      const saved = await fetch(`${apiBaseUrl}/settings`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ blocklist: current.blocklist || [], blockingMode: mode }),
+      });
+      if (!saved.ok) throw new Error(String(saved.status));
+      const data = await saved.json();
+      if (Array.isArray(data.blocklist)) blocklist = normalizeBlocklist(data.blocklist);
+      lastSettingsSync = Date.now();
+    } catch (error) {
+      throw new Error("Couldn't save the change. Check your connection and try again.");
+    }
+  }
+
+  blockingMode = mode;
+  await saveState();
+  updateBlockingRules();
 }
 
 // Refresh settings if they're older than the throttle window. Non-blocking, so

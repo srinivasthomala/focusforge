@@ -60,7 +60,56 @@ function updateUI(status) {
   $('connectBanner').style.display = status.hasApiKey ? 'none' : 'block';
   distractionCount.textContent = status.distractionAttempts || 0;
   renderBlocklist(status.blocklist);
+  lastStatus = status;
+  renderBlockingMode();
 }
+
+// ---- Blocking mode ---------------------------------------------------------------
+
+let lastStatus = {};
+
+// Show which mode is on, and in plain words whether sites are blocked right now.
+function renderBlockingMode() {
+  const mode = lastStatus.blockingMode === 'always' ? 'always' : 'focus-only';
+  document.querySelectorAll('.mode-btn').forEach((btn) => {
+    const on = btn.dataset.mode === mode;
+    btn.classList.toggle('selected', on);
+    btn.setAttribute('aria-checked', String(on));
+  });
+
+  const hasSites = (lastStatus.blocklist || []).length > 0;
+  const blockingNow = hasSites && (mode === 'always' || lastStatus.focusSessionActive);
+  let text;
+  if (!hasSites) {
+    text = 'No sites on your list yet, so nothing is blocked.';
+  } else if (mode === 'always') {
+    text = 'Blocked now. Your sites stay blocked all the time.';
+  } else if (lastStatus.focusSessionActive) {
+    text = 'Blocked now, until this session ends.';
+  } else {
+    text = 'Not blocked right now. Start a session to block your sites.';
+  }
+  $('blockingNow').classList.toggle('on', blockingNow);
+  $('blockingNowText').textContent = text;
+}
+
+document.querySelectorAll('.mode-btn').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const mode = btn.dataset.mode;
+    if (mode === lastStatus.blockingMode) return;
+    const buttons = document.querySelectorAll('.mode-btn');
+    buttons.forEach((b) => (b.disabled = true));
+    $('modeError').textContent = '';
+    const response = await send({ action: 'setBlockingMode', mode });
+    buttons.forEach((b) => (b.disabled = false));
+    if (response.success) {
+      lastStatus.blockingMode = response.blockingMode;
+      renderBlockingMode();
+    } else {
+      $('modeError').textContent = response.error || "Couldn't change the mode.";
+    }
+  });
+});
 
 // ---- Choosing a length ---------------------------------------------------------
 
@@ -224,6 +273,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   if (changes.blocklist) {
     renderBlocklist(changes.blocklist.newValue || []);
+    lastStatus.blocklist = changes.blocklist.newValue || [];
+    renderBlockingMode();
+  }
+  if (changes.blockingMode) {
+    lastStatus.blockingMode = changes.blockingMode.newValue;
+    renderBlockingMode();
   }
   if (changes.distractionAttempts) {
     distractionCount.textContent = changes.distractionAttempts.newValue || 0;

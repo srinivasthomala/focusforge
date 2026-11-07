@@ -125,6 +125,39 @@
       color: #cbd5e1;
     }
     .blocklist-empty { font-size: 12px; color: #94a3b8; line-height: 1.45; }
+
+    .mode-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .mode-row .blocklist-title { margin-bottom: 0; }
+    .mode-switch { display: flex; background: #0b1222; border: 1px solid #334155; border-radius: 6px; padding: 2px; }
+    .mode-btn {
+      padding: 5px 10px;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .mode-btn:hover { color: #e2e8f0; }
+    .mode-btn.selected { background: #14b8a6; color: #0f172a; }
+    .mode-btn:disabled { cursor: wait; }
+    .blocking-now {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #cbd5e1;
+      background: #1e293b;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+    .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #64748b; }
+    .blocking-now.on .dot { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .blocking-now + .error:empty { display: none; }
+    .blocking-now + .error { margin: -6px 0 10px; }
     .blocklist-empty a { color: #2dd4bf; }
 
     .footer {
@@ -204,6 +237,15 @@
   </div>
 
   <div class="blocklist">
+    <div class="mode-row">
+      <span class="blocklist-title">Block sites</span>
+      <div class="mode-switch" role="radiogroup" aria-label="When to block sites">
+        <button class="mode-btn" data-mode="focus-only" role="radio">During focus</button>
+        <button class="mode-btn" data-mode="always" role="radio">Always</button>
+      </div>
+    </div>
+    <div id="blockingNow" class="blocking-now"><span class="dot"></span><span id="blockingNowText"></span></div>
+    <div id="modeError" class="error"></div>
     <div class="blocklist-title">Blocked sites</div>
     <div id="blocklistContainer"></div>
   </div>
