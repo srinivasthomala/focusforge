@@ -1,5 +1,7 @@
 // FocusForge Background Service Worker
 
+importScripts('config.js'); // FOCUSFORGE_WEB_URL, FOCUSFORGE_MAX_MINUTES
+
 // State management
 // Empty on purpose: nothing is blocked until the user adds sites in the
 // dashboard (or asks the Focus Coach). Mirrors the API DEFAULT_BLOCKLIST.
@@ -13,6 +15,8 @@ let blockingMode = 'focus-only'; // 'focus-only' | 'always' — synced from the 
 let lastSettingsSync = 0;
 let activityLogs = [];
 let distractionAttempts = 0;
+let lastDuration = 25; // minutes; the popup preselects the last length used
+let lastCompleted = null; // { minutes, at } shown once in the popup after a session
 let stateLoaded = false;
 
 // How stale settings may get before an opportunistic (on-navigation) refresh.
@@ -33,8 +37,13 @@ function getApiBaseUrl() {
 }
 
 // Initialize extension
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   console.log('FocusForge installed');
+
+  // First install: open the setup page so new users can connect their account.
+  if (details.reason === 'install') {
+    chrome.runtime.openOptionsPage();
+  }
 
   loadState().then(() => {
     updateBlockingRules();
@@ -49,6 +58,7 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onStartup.addListener(() => {
   loadState().then(() => {
     updateBlockingRules();
+    updateBadge();
     fetchSettings();
   });
   chrome.alarms.create('syncSettings', { periodInMinutes: 1 });
@@ -103,7 +113,11 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   } else if (alarm.name === 'syncSettings') {
     fetchSettings();
   } else if (alarm.name === 'endSession') {
-    endFocusSession().then(() => sendLogsToBackend());
+    ensureStateLoaded()
+      .then(() => endFocusSession())
+      .then(() => sendLogsToBackend());
+  } else if (alarm.name === 'badgeTick') {
+    ensureStateLoaded().then(updateBadge);
   }
 });
 
@@ -133,13 +147,24 @@ async function handleMessage(request, sendResponse) {
     } else if (request.action === 'getStatus') {
       sendResponse({
         focusSessionActive,
+        sessionStartTime,
         sessionEndTime,
         distractionAttempts,
         blocklist,
-        blockingMode
+        blockingMode,
+        lastDuration,
+        lastCompleted: recentCompletion(),
+        hasApiKey: Boolean(await getApiKey()),
       });
       // Opportunistically refresh settings when the popup opens (non-blocking).
       fetchSettings();
+    } else if (request.action === 'extendSession') {
+      await extendFocusSession(request.minutes);
+      sendResponse({ success: true });
+    } else if (request.action === 'dismissCompleted') {
+      lastCompleted = null;
+      await saveState();
+      sendResponse({ success: true });
     } else if (request.action === 'updateBlocklist') {
       blocklist = normalizeBlocklist(request.blocklist);
       await saveState();
@@ -153,12 +178,24 @@ async function handleMessage(request, sendResponse) {
 
 // Start a focus session
 async function startFocusSession(duration = 25) {
+  const minutes = Number(duration);
+  if (!Number.isInteger(minutes) || minutes < 1 || minutes > FOCUSFORGE_MAX_MINUTES) {
+    throw new Error(`Pick a whole number of minutes from 1 to ${FOCUSFORGE_MAX_MINUTES}.`);
+  }
+  if (focusSessionActive) {
+    throw new Error('A focus session is already running.');
+  }
+
   focusSessionActive = true;
   sessionStartTime = Date.now();
-  sessionEndTime = sessionStartTime + (duration * 60 * 1000);
+  sessionEndTime = sessionStartTime + (minutes * 60 * 1000);
+  lastDuration = minutes;
+  lastCompleted = null;
 
-  // Set alarm to end session
+  // Set alarm to end session, and tick the toolbar badge every minute.
   chrome.alarms.create('endSession', { when: sessionEndTime });
+  chrome.alarms.create('badgeTick', { periodInMinutes: 1 });
+  updateBadge();
 
   // Update blocking rules
   updateBlockingRules();
@@ -176,31 +213,42 @@ async function startFocusSession(duration = 25) {
 
   await saveState();
   
-  console.log(`Focus session started for ${duration} minutes`);
+  console.log(`Focus session started for ${minutes} minutes`);
 }
 
 // End focus session
 async function endFocusSession() {
-  // Record the actual focused time (now − start), so a session ended early
-  // counts only what was spent, not the planned duration. Guarded so repeat
-  // calls (e.g. expiry + manual end) don't double-log.
+  // Record the actual focused time, so a session ended early counts only what
+  // was spent. Capped at the planned end, so a session whose expiry is handled
+  // late (service worker asleep, browser closed) doesn't count the extra time.
+  // Guarded so repeat calls (e.g. expiry + manual end) don't double-log.
   if (sessionStartTime) {
+    const now = Date.now();
+    const completed = Boolean(sessionEndTime && now >= sessionEndTime);
+    const endedAt = sessionEndTime ? Math.min(now, sessionEndTime) : now;
+    const minutes = Math.max(0, (endedAt - sessionStartTime) / 60000);
     logActivity({
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(endedAt).toISOString(),
       url: 'session-end',
       domain: 'system',
-      minutesActive: Math.max(0, (Date.now() - sessionStartTime) / 60000),
+      minutesActive: minutes,
       isFocusSession: true,
       isDistractionAttempt: false
     });
+    lastCompleted = { minutes, at: now };
     sessionStartTime = null;
+    if (completed) {
+      notifyComplete(minutes);
+    }
   }
 
   focusSessionActive = false;
   sessionEndTime = null;
 
-  // Clear the alarm if it exists
+  // Clear the alarms if they exist
   chrome.alarms.clear('endSession');
+  chrome.alarms.clear('badgeTick');
+  updateBadge();
   
   // Update blocking rules
   updateBlockingRules();
@@ -210,6 +258,66 @@ async function endFocusSession() {
   // Note: log flushing is intentionally NOT awaited here. Callers trigger the
   // network send after responding to the popup, so the UI never waits on it.
   console.log('Focus session ended');
+}
+
+// Add minutes to the running session (the "+5 min" button).
+async function extendFocusSession(minutes = 5) {
+  const extra = Number(minutes);
+  if (!focusSessionActive || !sessionEndTime) {
+    throw new Error('No focus session is running.');
+  }
+  if (!Number.isInteger(extra) || extra < 1 || extra > 60) {
+    throw new Error('Extend by 1 to 60 minutes.');
+  }
+  const planned = (sessionEndTime - sessionStartTime) / 60000;
+  if (planned + extra > FOCUSFORGE_MAX_MINUTES) {
+    throw new Error(`Sessions can be at most ${FOCUSFORGE_MAX_MINUTES} minutes.`);
+  }
+  sessionEndTime += extra * 60 * 1000;
+  chrome.alarms.create('endSession', { when: sessionEndTime });
+  updateBadge();
+  await saveState();
+}
+
+// The popup shows a "session complete" card for a few minutes after a session.
+function recentCompletion() {
+  if (lastCompleted && Date.now() - lastCompleted.at < 10 * 60 * 1000) {
+    return lastCompleted;
+  }
+  return null;
+}
+
+// Minutes left on the toolbar icon while a session runs.
+function updateBadge() {
+  if (!chrome.action) return;
+  if (focusSessionActive && sessionEndTime) {
+    const left = Math.max(0, Math.ceil((sessionEndTime - Date.now()) / 60000));
+    chrome.action.setBadgeBackgroundColor({ color: '#14b8a6' });
+    chrome.action.setBadgeText({ text: `${left}m` });
+  } else {
+    chrome.action.setBadgeText({ text: '' });
+  }
+}
+
+function notifyComplete(minutes) {
+  if (!chrome.notifications) return;
+  const mins = Math.round(minutes);
+  chrome.notifications.create('focusforge-session-complete', {
+    type: 'basic',
+    iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+    title: 'Focus session complete',
+    message: `Nice work: ${mins} minute${mins === 1 ? '' : 's'} of focus. Take a short break.`,
+    priority: 1,
+  });
+}
+
+if (chrome.notifications) {
+  chrome.notifications.onClicked.addListener((id) => {
+    if (id === 'focusforge-session-complete') {
+      chrome.tabs.create({ url: `${FOCUSFORGE_WEB_URL}/dashboard` });
+      chrome.notifications.clear(id);
+    }
+  });
 }
 
 // Log activity
@@ -340,7 +448,7 @@ function ensureStateLoaded() {
 function loadState() {
   return new Promise((resolve) => {
     chrome.storage.local.get(
-      ['blocklist', 'blockingMode', 'lastSettingsSync', 'focusSessionActive', 'sessionEndTime', 'sessionStartTime', 'distractionAttempts', 'activityLogs'],
+      ['blocklist', 'blockingMode', 'lastSettingsSync', 'focusSessionActive', 'sessionEndTime', 'sessionStartTime', 'distractionAttempts', 'activityLogs', 'lastDuration', 'lastCompleted'],
       (result) => {
         blocklist = normalizeBlocklist(result.blocklist || DEFAULT_BLOCKLIST);
         blockingMode = result.blockingMode === 'always' ? 'always' : 'focus-only';
@@ -350,12 +458,22 @@ function loadState() {
         focusSessionActive = Boolean(result.focusSessionActive && sessionEndTime && sessionEndTime > Date.now());
         distractionAttempts = Number.isFinite(result.distractionAttempts) ? result.distractionAttempts : 0;
         activityLogs = Array.isArray(result.activityLogs) ? result.activityLogs : [];
+        lastDuration = Number.isInteger(result.lastDuration) ? result.lastDuration : 25;
+        lastCompleted = result.lastCompleted && Number.isFinite(result.lastCompleted.at) ? result.lastCompleted : null;
         stateLoaded = true;
+
+        // A session that expired while the browser was closed still gets its
+        // focus time recorded (capped at the planned end) before we reset.
+        if (!focusSessionActive && result.focusSessionActive && sessionStartTime && sessionEndTime) {
+          endFocusSession().then(resolve);
+          return;
+        }
 
         if (!focusSessionActive) {
           sessionEndTime = null;
           sessionStartTime = null;
           chrome.alarms.clear('endSession');
+          chrome.alarms.clear('badgeTick');
         }
 
         saveState().then(resolve);
@@ -375,6 +493,8 @@ function saveState() {
       sessionStartTime,
       distractionAttempts,
       activityLogs,
+      lastDuration,
+      lastCompleted,
     }, resolve);
   });
 }

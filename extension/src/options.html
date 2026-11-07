@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FocusForge — Options</title>
+  <title>FocusForge Setup</title>
   <style>
     :root { color-scheme: dark; }
     body {
@@ -47,11 +47,12 @@
     .status.err { color: #f87171; }
     ol { color: #9aa5a3; font-size: 13px; line-height: 1.6; padding-left: 18px; }
     a { color: #34d3c0; }
+    .links { margin-top: 28px; padding-top: 16px; border-top: 1px solid #2a3437; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1><span class="brand">FocusForge</span> — Connect your account</h1>
+    <h1><span class="brand">FocusForge</span>: connect your account</h1>
     <p>
       Paste your API key to connect this extension to your FocusForge dashboard.
       It will then sync your focus sessions automatically.
@@ -64,12 +65,20 @@
     <div id="status" class="status"></div>
 
     <ol>
-      <li>Open the FocusForge web app and sign in.</li>
+      <li><a href="#" class="web-link" data-path="/login">Open the FocusForge web app</a> and sign in, or create a free account.</li>
       <li>Go to <strong>Settings → API Keys</strong> and click <strong>Generate key</strong>.</li>
       <li>Copy the key, paste it above, and click <strong>Save</strong>.</li>
     </ol>
+
+    <p class="links">
+      <a href="#" class="web-link" data-path="/dashboard">Dashboard</a> ·
+      <a href="#" class="web-link" data-path="/settings">Blocked sites</a> ·
+      <a href="#" class="web-link" data-path="/">About FocusForge</a> ·
+      <a href="#" class="web-link" data-path="/privacy">Privacy</a>
+    </p>
   </div>
 
+  <script src="config.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

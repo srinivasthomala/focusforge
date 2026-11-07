@@ -5,135 +5,117 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FocusForge</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       width: 320px;
-      padding: 20px;
+      padding: 18px 20px 14px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       background: #0f172a;
       color: #e2e8f0;
     }
 
-    .header {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
+    .header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
     .logo {
-      font-size: 24px;
+      font-size: 20px;
       font-weight: bold;
       background: linear-gradient(135deg, #14b8a6, #06b6d4);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin-bottom: 4px;
     }
+    .tagline { font-size: 11px; color: #94a3b8; }
 
-    .tagline {
-      font-size: 11px;
-      color: #94a3b8;
+    .connect {
+      display: none;
+      background: rgba(20, 184, 166, 0.1);
+      border: 1px solid rgba(20, 184, 166, 0.35);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #cbd5e1;
     }
+    .connect a { color: #2dd4bf; font-weight: 600; }
 
-    .status {
+    .card {
       background: #1e293b;
       border: 1px solid #334155;
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 16px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
-    .status-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
+    .label { font-size: 12px; color: #94a3b8; margin-bottom: 8px; }
 
-    .status-row:last-child {
-      margin-bottom: 0;
-    }
-
-    .status-label {
+    .presets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+    .preset {
+      padding: 8px 0;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #cbd5e1;
       font-size: 13px;
-      color: #94a3b8;
-    }
-
-    .status-value {
-      font-size: 14px;
       font-weight: 600;
+      cursor: pointer;
     }
+    .preset:hover { border-color: #14b8a6; }
+    .preset.selected { background: #14b8a6; border-color: #14b8a6; color: #0f172a; }
 
-    .status-active {
+    .custom { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: #94a3b8; }
+    .custom input {
+      width: 64px;
+      padding: 6px 8px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 13px;
+    }
+    .custom input:focus { outline: none; border-color: #14b8a6; }
+    .error { color: #f87171; font-size: 12px; margin-top: 6px; min-height: 0; }
+
+    .timer {
+      font-size: 44px;
+      font-weight: 700;
+      text-align: center;
       color: #14b8a6;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 1px;
     }
+    .timer-sub { text-align: center; font-size: 12px; color: #94a3b8; margin-top: 2px; }
+    .progress { height: 6px; background: #0f172a; border-radius: 99px; overflow: hidden; margin-top: 12px; }
+    .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #14b8a6, #06b6d4); transition: width 1s linear; }
 
-    .status-inactive {
-      color: #64748b;
-    }
+    .done { text-align: center; }
+    .done-title { font-size: 16px; font-weight: 700; color: #2dd4bf; }
+    .done-sub { font-size: 12px; color: #94a3b8; margin-top: 4px; }
 
     .btn {
       width: 100%;
-      padding: 12px;
+      padding: 11px;
       border: none;
       border-radius: 6px;
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: background 0.2s;
       margin-bottom: 8px;
     }
+    .btn-primary { background: #14b8a6; color: #0f172a; }
+    .btn-primary:hover { background: #0d9488; }
+    .btn-secondary { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; }
+    .btn-secondary:hover { background: #334155; }
+    .btn-danger { background: #ef4444; color: white; }
+    .btn-danger:hover { background: #dc2626; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
-    .btn-primary {
-      background: #14b8a6;
-      color: #0f172a;
-    }
+    .stats { display: flex; justify-content: space-between; font-size: 12px; color: #94a3b8; margin: 4px 2px 12px; }
+    .stats strong { color: #e2e8f0; }
 
-    .btn-primary:hover {
-      background: #0d9488;
-    }
-
-    .btn-secondary {
-      background: #1e293b;
-      color: #e2e8f0;
-      border: 1px solid #334155;
-    }
-
-    .btn-secondary:hover {
-      background: #334155;
-    }
-
-    .btn-danger {
-      background: #ef4444;
-      color: white;
-    }
-
-    .btn-danger:hover {
-      background: #dc2626;
-    }
-
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .blocklist {
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid #334155;
-    }
-
-    .blocklist-title {
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 8px;
-      color: #94a3b8;
-    }
-
+    .blocklist { padding-top: 12px; border-top: 1px solid #334155; }
+    .blocklist-title { font-size: 12px; font-weight: 600; margin-bottom: 8px; color: #94a3b8; }
     .blocklist-item {
       font-size: 12px;
       padding: 6px 8px;
@@ -142,14 +124,21 @@
       margin-bottom: 4px;
       color: #cbd5e1;
     }
+    .blocklist-empty { font-size: 12px; color: #94a3b8; line-height: 1.45; }
+    .blocklist-empty a { color: #2dd4bf; }
 
-    .timer {
-      font-size: 28px;
-      font-weight: bold;
-      text-align: center;
-      margin: 16px 0;
-      color: #14b8a6;
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid #334155;
+      font-size: 12px;
     }
+    .footer a { color: #94a3b8; text-decoration: none; }
+    .footer a:hover { color: #2dd4bf; }
+
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -158,29 +147,73 @@
     <div class="tagline">Forge your focus</div>
   </div>
 
-  <div class="status">
-    <div class="status-row">
-      <span class="status-label">Session Status</span>
-      <span id="sessionStatus" class="status-value status-inactive">Inactive</span>
+  <div id="connectBanner" class="connect">
+    Your sessions aren't syncing yet.
+    <a href="#" id="connectLink">Connect your free account</a> to see your stats and use the Focus Coach.
+  </div>
+
+  <!-- Idle: pick a length -->
+  <div id="idleView">
+    <div class="card">
+      <div class="label">Focus for</div>
+      <div class="presets" id="presets">
+        <button class="preset" data-min="15">15</button>
+        <button class="preset" data-min="25">25</button>
+        <button class="preset" data-min="45">45</button>
+        <button class="preset" data-min="60">60</button>
+        <button class="preset" data-min="90">90</button>
+      </div>
+      <div class="custom">
+        <span>or</span>
+        <input id="customMinutes" type="number" min="1" max="240" step="1" placeholder="min" aria-label="Custom minutes">
+        <span>minutes</span>
+      </div>
+      <div id="durationError" class="error"></div>
     </div>
-    <div class="status-row">
-      <span class="status-label">Distractions Blocked</span>
-      <span id="distractionCount" class="status-value">0</span>
+    <button id="startBtn" class="btn btn-primary">Start 25-min focus</button>
+  </div>
+
+  <!-- Running -->
+  <div id="activeView" class="hidden">
+    <div class="card">
+      <div id="timerDisplay" class="timer">25:00</div>
+      <div id="timerSub" class="timer-sub">of 25 min</div>
+      <div class="progress"><div id="progressBar" class="progress-bar"></div></div>
+    </div>
+    <div class="row">
+      <button id="extendBtn" class="btn btn-secondary">+5 min</button>
+      <button id="endBtn" class="btn btn-danger">End session</button>
     </div>
   </div>
 
-  <div id="timerDisplay" class="timer" style="display: none;">25:00</div>
+  <!-- Just finished -->
+  <div id="doneView" class="hidden">
+    <div class="card done">
+      <div class="done-title">Session complete</div>
+      <div id="doneSub" class="done-sub">Nice work.</div>
+    </div>
+    <div class="row">
+      <button id="againBtn" class="btn btn-primary">Focus again</button>
+      <button id="dismissBtn" class="btn btn-secondary">Done</button>
+    </div>
+  </div>
 
-  <button id="startBtn" class="btn btn-primary">Start 25-min Focus Session</button>
-  <button id="endBtn" class="btn btn-danger" style="display: none;">End Session</button>
+  <div class="stats">
+    <span>Status: <strong id="sessionStatus">Inactive</strong></span>
+    <span>Distractions blocked: <strong id="distractionCount">0</strong></span>
+  </div>
 
   <div class="blocklist">
-    <div class="blocklist-title">Blocked Sites</div>
+    <div class="blocklist-title">Blocked sites</div>
     <div id="blocklistContainer"></div>
   </div>
 
+  <div class="footer">
+    <a href="#" id="dashboardLink">Open dashboard ↗</a>
+    <a href="#" id="optionsLink">Extension settings</a>
+  </div>
+
+  <script src="config.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
-
-

@@ -19,11 +19,18 @@ document.getElementById('save').addEventListener('click', () => {
   const apiKey = input.value.trim();
 
   if (apiKey && !apiKey.startsWith('ff_')) {
-    showStatus('That doesn’t look like a FocusForge key (should start with "ff_").', false);
+    showStatus('That doesn't look like a FocusForge key (should start with "ff_").', false);
     return;
   }
 
   chrome.storage.local.set({ apiKey }, () => {
     showStatus(apiKey ? 'Saved. The extension will sync on the next interval.' : 'Key cleared.', true);
   });
+});
+
+// Links to the web app (sign up, dashboard, privacy).
+document.querySelectorAll('.web-link').forEach((link) => {
+  link.href = `${FOCUSFORGE_WEB_URL}${link.dataset.path}`;
+  link.target = '_blank';
+  link.rel = 'noopener';
 });
