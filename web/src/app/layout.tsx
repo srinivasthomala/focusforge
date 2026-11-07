@@ -4,9 +4,22 @@ import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
+const description =
+  'FocusForge blocks distracting sites during focus sessions of any length, tracks your focus time and gives you an AI coach. Free Chrome extension.';
+
 export const metadata: Metadata = {
-  title: 'FocusForge - Forge your focus. Shape your day.',
-  description: 'A lightweight focus and productivity tool for developers and creators.',
+  metadataBase: new URL('https://focusforge-iota.vercel.app'),
+  title: 'FocusForge: block distractions, focus longer',
+  description,
+  openGraph: {
+    title: 'FocusForge: block distractions, focus longer',
+    description,
+    url: '/',
+    siteName: 'FocusForge',
+    images: [{ url: '/screenshots/dashboard.png', width: 2271, height: 1331 }],
+    type: 'website',
+  },
+  twitter: { card: 'summary_large_image' },
 };
 
 export default function RootLayout({
