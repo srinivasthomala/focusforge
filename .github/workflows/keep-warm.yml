@@ -61,11 +61,19 @@ jobs:
             echo "::error::unexpected auth response $code"; exit 1
           fi
 
+      # A GitHub API hiccup here says nothing about Supabase or Fly, so retry
+      # and only warn: it must not open a "demo is down" issue.
       - name: Keep this schedule from being auto-disabled
         if: always()
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/keep-warm.yml/enable"
+        run: |
+          for attempt in 1 2 3; do
+            gh api -X PUT "repos/${{ github.repository }}/actions/workflows/keep-warm.yml/enable" && exit 0
+            sleep $((attempt * 10))
+          done
+          echo "::warning::could not re-enable the schedule this run; the next run will try again"
 
       - name: Open an alert issue on failure
         if: failure()
