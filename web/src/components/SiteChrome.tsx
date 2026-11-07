@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import { EXTENSION_CTA, EXTENSION_URL, GITHUB_URL } from '@/lib/site';
+import { isSignedIn } from '@/lib/supabase/user';
 
 // Header and footer for the public pages (landing, privacy, terms).
 
-export function SiteHeader() {
+export async function SiteHeader() {
+  const signedIn = await isSignedIn();
   return (
     <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -20,9 +22,15 @@ export function SiteHeader() {
           <Link href="/#faq" className="hidden text-muted-foreground hover:text-foreground md:inline">
             FAQ
           </Link>
-          <Link href="/login" className="text-muted-foreground hover:text-foreground">
-            Sign in
-          </Link>
+          {signedIn ? (
+            <Link href="/dashboard" className="font-semibold text-foreground hover:text-primary">
+              Dashboard
+            </Link>
+          ) : (
+            <Link href="/login" className="text-muted-foreground hover:text-foreground">
+              Sign in
+            </Link>
+          )}
           <a
             href={EXTENSION_URL}
             target="_blank"
@@ -37,7 +45,8 @@ export function SiteHeader() {
   );
 }
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const signedIn = await isSignedIn();
   return (
     <footer className="border-t border-border/60">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
@@ -50,7 +59,9 @@ export function SiteFooter() {
           <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
             GitHub
           </a>
-          <Link href="/login" className="hover:text-foreground">Sign in</Link>
+          <Link href={signedIn ? '/dashboard' : '/login'} className="hover:text-foreground">
+            {signedIn ? 'Dashboard' : 'Sign in'}
+          </Link>
         </div>
       </div>
     </footer>

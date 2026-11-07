@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
 import { EXTENSION_CTA, EXTENSION_URL, GITHUB_URL } from '@/lib/site';
+import { isSignedIn } from '@/lib/supabase/user';
 
 const features = [
   {
@@ -134,7 +135,8 @@ function CoachMockup() {
   );
 }
 
-export default function Home({ searchParams }: { searchParams: { deleted?: string } }) {
+export default async function Home({ searchParams }: { searchParams: { deleted?: string } }) {
+  const signedIn = await isSignedIn();
   return (
     <div className="min-h-screen">
       <SiteHeader />
@@ -169,10 +171,10 @@ export default function Home({ searchParams }: { searchParams: { deleted?: strin
                 {EXTENSION_CTA}
               </a>
               <Link
-                href="/login?mode=signup"
+                href={signedIn ? '/dashboard' : '/login?mode=signup'}
                 className="inline-flex h-12 items-center rounded-md border border-border px-8 font-semibold hover:bg-secondary"
               >
-                Create a free account
+                {signedIn ? 'Open your dashboard' : 'Create a free account'}
               </Link>
             </div>
             <p className="mt-4 text-sm text-muted-foreground">No credit card. Works in Chrome, Edge and Brave.</p>
