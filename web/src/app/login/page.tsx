@@ -4,17 +4,24 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { createClient } from '@/lib/supabase/client';
+import { safeNextPath } from '@/lib/next-path';
 
 type Mode = 'signin' | 'signup';
 
 export default function Login() {
   const [mode, setMode] = useState<Mode>('signin');
 
-  // "Create a free account" links on the landing page open this as /login?mode=signup.
+  // Where to go after signing in (e.g. /settings when the extension sent them).
+  const [next, setNext] = useState('/dashboard');
+
+  // "Create a free account" links open this as /login?mode=signup; protected
+  // pages send ?next= so people land back where they were going.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('mode') === 'signup') {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'signup') {
       setMode('signup');
     }
+    setNext(safeNextPath(params.get('next')));
   }, []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,7 +43,7 @@ export default function Login() {
         setLoading(false);
         return;
       }
-      window.location.assign('/dashboard');
+      window.location.assign(next);
     } else {
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) {
@@ -46,7 +53,7 @@ export default function Login() {
       }
       // If email confirmation is disabled, a session is returned immediately.
       if (data.session) {
-        window.location.assign('/dashboard');
+        window.location.assign(next);
       } else {
         setInfo(`Check ${email} to confirm your account, then sign in.`);
         setMode('signin');
@@ -59,6 +66,9 @@ export default function Login() {
     setLoading(true);
     setError(null);
     const supabase = createClient();
+    // The callback URL must match Supabase's allowlist exactly, so the return
+    // path travels in a short-lived cookie instead of a query parameter.
+    document.cookie = `ff_next=${encodeURIComponent(next)}; path=/; max-age=600; samesite=lax`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },

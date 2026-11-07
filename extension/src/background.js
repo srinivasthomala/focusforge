@@ -161,6 +161,11 @@ async function handleMessage(request, sendResponse) {
     } else if (request.action === 'extendSession') {
       await extendFocusSession(request.minutes);
       sendResponse({ success: true });
+    } else if (request.action === 'syncNow') {
+      // Just connected from the setup page: pull settings, send queued logs.
+      sendResponse({ success: true });
+      fetchSettings();
+      sendLogsToBackend();
     } else if (request.action === 'dismissCompleted') {
       lastCompleted = null;
       await saveState();

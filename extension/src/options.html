@@ -45,8 +45,16 @@
     .status { margin-top: 12px; font-size: 13px; min-height: 18px; }
     .status.ok { color: #34d3c0; }
     .status.err { color: #f87171; }
-    ol { color: #9aa5a3; font-size: 13px; line-height: 1.6; padding-left: 18px; }
+    .status.muted { color: #9aa5a3; }
+    button:disabled { opacity: 0.6; cursor: wait; }
     a { color: #34d3c0; }
+    .step { margin-top: 24px; padding: 18px; background: #11181a; border: 1px solid #2a3437; border-radius: 10px; }
+    .step p { margin: 8px 0 14px; }
+    .step label { margin-top: 4px; }
+    .step-title { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+    .num { display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; border-radius: 50%; background: #34d3c0; color: #03110f; font-size: 13px; }
+    .button-link { display: inline-block; padding: 10px 18px; background: #34d3c0; color: #03110f; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none; }
+    .button-link:hover { background: #2bbcab; }
     .links { margin-top: 28px; padding-top: 16px; border-top: 1px solid #2a3437; }
   </style>
 </head>
@@ -54,21 +62,23 @@
   <div class="container">
     <h1><span class="brand">FocusForge</span>: connect your account</h1>
     <p>
-      Paste your API key to connect this extension to your FocusForge dashboard.
-      It will then sync your focus sessions automatically.
+      Connect this extension to your free FocusForge account to sync your blocked sites,
+      see your focus stats and use the Focus Coach. The timer works without an account too.
     </p>
 
-    <label for="apiKey">API key</label>
-    <input id="apiKey" type="text" placeholder="ff_..." autocomplete="off" spellcheck="false" />
+    <div class="step">
+      <div class="step-title"><span class="num">1</span> Get your key</div>
+      <p>Sign in (or create a free account). The Settings page opens, where you click <strong>Generate key</strong> and copy it.</p>
+      <a href="#" class="web-link button-link" data-path="/settings">Get your key ↗</a>
+    </div>
 
-    <button id="save">Save</button>
-    <div id="status" class="status"></div>
-
-    <ol>
-      <li><a href="#" class="web-link" data-path="/login">Open the FocusForge web app</a> and sign in, or create a free account.</li>
-      <li>Go to <strong>Settings → API Keys</strong> and click <strong>Generate key</strong>.</li>
-      <li>Copy the key, paste it above, and click <strong>Save</strong>.</li>
-    </ol>
+    <div class="step">
+      <div class="step-title"><span class="num">2</span> Paste it here</div>
+      <label for="apiKey">Your key</label>
+      <input id="apiKey" type="text" placeholder="ff_..." autocomplete="off" spellcheck="false" />
+      <button id="save">Connect</button>
+      <div id="status" class="status"></div>
+    </div>
 
     <p class="links">
       <a href="#" class="web-link" data-path="/dashboard">Dashboard</a> ·
