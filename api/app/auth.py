@@ -112,6 +112,27 @@ def _user_from_jwt(token: str) -> str | None:
     return payload.get("sub")
 
 
+def get_current_web_user(authorization: str | None = Header(default=None)) -> str:
+    """Like ``get_current_user`` but accepts only a dashboard sign-in token.
+
+    For actions that must never be possible with an extension key, such as
+    deleting the account: a leaked key should not be able to do that.
+    """
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or malformed Authorization header.",
+        )
+    token = authorization.split(" ", 1)[1].strip()
+    user_id = None if token.startswith(API_KEY_PREFIX) else _user_from_jwt(token)
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sign in on the dashboard to do this.",
+        )
+    return user_id
+
+
 def get_current_user(
     authorization: str | None = Header(default=None),
     db: Session = Depends(get_db),

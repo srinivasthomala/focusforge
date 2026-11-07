@@ -66,7 +66,7 @@ export default function Terms() {
 
       <h2>Ending your use</h2>
       <p>
-        You can stop using FocusForge and ask us to delete your account at any time. We may suspend accounts that
+        You can stop using FocusForge and delete your account at any time from Settings. We may suspend accounts that
         break these terms.
       </p>
 

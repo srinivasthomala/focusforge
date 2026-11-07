@@ -89,8 +89,8 @@ export default function Privacy() {
 
       <h2>How long we keep it</h2>
       <p>
-        We keep your data while your account exists. When you ask us to delete your account, we delete your
-        sessions, blocked attempts, settings, summaries, Focus Coach history and keys.
+        We keep your data while your account exists. When you delete your account, we delete your sign-in,
+        sessions, blocked attempts, settings, summaries, Focus Coach history and keys right away.
       </p>
 
       <h2>Your choices</h2>
@@ -98,8 +98,11 @@ export default function Privacy() {
         <li>You can use the timer and blocking without an account. Nothing is sent until you connect one.</li>
         <li>You can disconnect the extension at any time by clearing its key in the extension settings.</li>
         <li>
-          You can ask for a copy of your data, or for your account and data to be deleted, by contacting us at{' '}
-          <Contact />.
+          You can delete your account and all its data at any time from <strong>Settings → Delete account</strong>{' '}
+          on the dashboard.
+        </li>
+        <li>
+          You can ask for a copy of your data by contacting us at <Contact />.
         </li>
       </ul>
 

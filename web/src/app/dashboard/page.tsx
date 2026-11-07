@@ -54,6 +54,7 @@ export default function Dashboard() {
   const [aiMeta, setAiMeta] = useState<{ model: string; cached: boolean } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [hasApiKeys, setHasApiKeys] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -132,8 +133,10 @@ export default function Dashboard() {
     }
   };
 
+  const summaryText = aiSummary || data?.aiSummary || 'No summary yet. Generate one to see how your day went.';
+
   if (loading) {
-    return (
+  return (
       <div className="min-h-screen bg-background">
         <Nav />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -222,9 +225,21 @@ export default function Dashboard() {
               <CardTitle className="text-lg">AI Summary</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-sm text-foreground max-h-32 overflow-y-auto">
-                {aiSummary || data?.aiSummary || 'No summary available yet.'}
-              </div>
+              {/* No inner scroll box: long summaries are clamped with a toggle,
+                  so scrolling the page never gets caught inside the card. */}
+              <p
+                className={`text-sm leading-relaxed text-foreground ${summaryExpanded ? '' : 'line-clamp-5'}`}
+              >
+                {summaryText}
+              </p>
+              {summaryText.length > 220 && (
+                <button
+                  onClick={() => setSummaryExpanded((v) => !v)}
+                  className="mt-1 text-xs font-medium text-primary hover:underline"
+                >
+                  {summaryExpanded ? 'Show less' : 'Show more'}
+                </button>
+              )}
               {aiError && (
                 <div className="mt-2 text-xs text-destructive">{aiError}</div>
               )}

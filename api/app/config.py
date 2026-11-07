@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     # for projects (or rotations) still signing with it.
     supabase_url: str = ""
     supabase_jwt_secret: str = ""
+    # Server-only admin key (sb_secret_... or a legacy service_role JWT). Only
+    # used to delete a user's sign-in when they delete their account.
+    supabase_secret_key: str = ""
 
     @property
     def supabase_jwks_url(self) -> str:

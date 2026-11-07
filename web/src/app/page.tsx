@@ -55,7 +55,7 @@ const faqs = [
   },
   {
     q: 'Can I delete my data?',
-    a: 'Yes. Ask us and we will delete your account and all its data. See the privacy policy for details.',
+    a: 'Yes. You can delete your account and all its data at any time from Settings on the dashboard.',
   },
   {
     q: 'Is it open source?',
@@ -134,10 +134,15 @@ function CoachMockup() {
   );
 }
 
-export default function Home() {
+export default function Home({ searchParams }: { searchParams: { deleted?: string } }) {
   return (
     <div className="min-h-screen">
       <SiteHeader />
+      {searchParams.deleted === '1' && (
+        <div className="border-b border-primary/30 bg-primary/10 px-4 py-3 text-center text-sm text-primary">
+          Your account and all its data have been deleted.
+        </div>
+      )}
 
       <main>
         {/* Hero */}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Nav } from '@/components/Nav';
+import { DeleteAccount } from '@/components/DeleteAccount';
 import { authedFetch } from '@/lib/api';
 
 type BlockingMode = 'focus-only' | 'always';
@@ -323,6 +324,8 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+
+          <DeleteAccount />
         </div>
       </main>
     </div>

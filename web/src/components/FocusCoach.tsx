@@ -57,9 +57,12 @@ export function FocusCoach() {
       .catch(() => {});
   }, []);
 
+  // When a reply lands below the fold, bring it into view. 'nearest' does
+  // nothing if it's already visible, so the page doesn't jump while reading.
   useEffect(() => {
+    if (turns.length === 0) return;
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [turns, sending]);
+  }, [turns]);
 
   async function send(message: string) {
     const text = message.trim();
@@ -153,7 +156,7 @@ export function FocusCoach() {
         ) : (
           <>
             {turns.length > 0 && (
-              <div className="space-y-3 mb-4 max-h-80 overflow-y-auto pr-1" aria-live="polite">
+              <div className="space-y-3 mb-4" aria-live="polite">
                 {turns.map((turn, i) => (
                   <div key={i} className={turn.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
                     <div
